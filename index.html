@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tablero de Análisis de Ajedrez</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body class="min-h-screen p-4 md:p-8 flex items-center justify-center">
+
+    <div class="max-w-6xl w-full flex flex-col lg:flex-row gap-8 items-start">
+        
+        <!-- Contenedor del Tablero -->
+        <div class="w-full lg:w-2/3 flex flex-col items-center">
+            <div class="w-full flex justify-between items-end mb-4 gap-2 flex-wrap">
+                <h1 class="text-2xl md:text-3xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-chess-knight text-blue-400"></i> Tablero de Análisis
+                </h1>
+                <div class="flex gap-2 items-center">
+                    <button onclick="flipBoard()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors px-3 py-1.5 rounded-lg text-sm font-semibold text-blue-300 flex items-center gap-1.5 shadow">
+                        <i class="fas fa-retweet"></i> Voltear
+                    </button>
+                    <span id="turn-indicator" class="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-900 shadow">
+                        Juegan Blancas
+                    </span>
+                </div>
+            </div>
+            
+            <div id="board-container">
+                <div id="board" class="board"></div>
+                
+                <svg id="arrows-svg" class="absolute top-0 left-0 w-full h-full pointer-events-none z-20" viewBox="0 0 8 8">
+                    <defs id="arrow-defs">
+                    </defs>
+                </svg>
+            </div>
+            
+            <p class="text-gray-400 text-sm mt-4 text-center">
+                <i class="fas fa-info-circle mr-1"></i> Se muestran todas las jugadas posibles. 
+                Las capturas se resaltan en <span class="text-red-400 font-bold">rojo</span>.
+            </p>
+        </div>
+
+        <!-- Panel Lateral: Estado, Historial y Controles -->
+        <div class="w-full lg:w-1/3 bg-slate-800 rounded-xl p-6 shadow-xl flex flex-col min-h-[600px] lg:h-[650px]">
+            
+            <!-- Tabs Headers -->
+            <div class="flex border-b border-slate-700 mb-4">
+                <button id="tab-analysis-btn" onclick="switchTab('analysis')" class="flex-1 pb-2 font-bold text-sm text-blue-400 border-b-2 border-blue-500 transition-colors">
+                    <i class="fas fa-search mr-1"></i> Análisis
+                </button>
+                <button id="tab-lichess-btn" onclick="switchTab('lichess')" class="flex-1 pb-2 font-bold text-sm text-gray-400 border-b-2 border-transparent hover:text-white transition-colors">
+                    <i class="fas fa-robot mr-1"></i> Lichess Bot
+                </button>
+            </div>
+
+            <!-- Tab Content: Análisis -->
+            <div id="tab-analysis" class="flex flex-col flex-1">
+                <h2 class="text-lg font-semibold mb-2 flex justify-between items-center">
+                    <span>Estado de Partida</span>
+                    <!-- Real-time analysis toggle -->
+                    <label class="relative inline-flex items-center cursor-pointer scale-90">
+                        <input type="checkbox" id="analysis-toggle" onchange="toggleAnalysis(this.checked)" class="sr-only peer" checked>
+                        <div class="w-9 h-5 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                        <span class="ml-2 text-xs font-semibold text-amber-400 flex items-center gap-1">
+                            <i class="fas fa-lightbulb animate-pulse"></i> Sugerencias Oro
+                        </span>
+                    </label>
+                </h2>
+                
+                <div id="status" class="text-base mb-4 font-medium text-blue-300 min-h-[2.5rem]">
+                    Partida iniciada.
+                </div>
+
+                <h3 class="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Historial de Jugadas</h3>
+                <div id="move-list" class="flex-1 bg-slate-900 rounded-lg p-3 overflow-y-auto mb-4 flex flex-col gap-1 text-sm font-mono border border-slate-700 min-h-[150px]">
+                    <!-- Los movimientos se inyectarán aquí -->
+                </div>
+
+                <!-- Controles de Análisis -->
+                <div class="flex flex-col gap-2 mt-auto">
+                    <div class="flex gap-2">
+                        <button onclick="undoMove()" class="flex-1 bg-slate-700 hover:bg-slate-600 transition-colors p-2 rounded text-sm font-semibold">
+                            <i class="fas fa-undo mr-1"></i> Deshacer
+                        </button>
+                        <button onclick="resetBoard()" class="flex-1 bg-slate-700 hover:bg-slate-600 transition-colors p-2 rounded text-sm font-semibold text-red-300">
+                            <i class="fas fa-trash mr-1"></i> Reiniciar
+                        </button>
+                    </div>
+                    
+                    <button onclick="exportPGN()" class="w-full bg-blue-600 hover:bg-blue-500 transition-colors p-2.5 rounded-lg text-sm font-bold flex justify-center items-center gap-2 shadow-lg">
+                        <i class="fas fa-download"></i> Exportar PGN (Lichess)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Content: Lichess Bot -->
+            <div id="tab-lichess" class="hidden flex flex-col flex-1 h-full">
+                <!-- Configuración Token y Bot -->
+                <div id="lichess-config-panel" class="flex flex-col gap-4 flex-1 overflow-y-auto pr-1">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                            Lichess Personal Token
+                        </label>
+                        <div class="relative">
+                            <input type="password" id="lichess-token-input" oninput="handleTokenInput(this.value)" placeholder="lip_..." class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white pr-10 focus:outline-none focus:border-blue-500">
+                            <button onclick="toggleTokenVisibility()" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-white">
+                                <i id="token-eye-icon" class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-1">
+                            Necesita permisos: <code class="text-blue-300 bg-slate-900 px-1 rounded">board:play</code> y <code class="text-blue-300 bg-slate-900 px-1 rounded">challenge:write</code>.
+                            <a href="https://lichess.org/account/oauth/token" target="_blank" class="text-blue-400 hover:underline inline-flex items-center gap-0.5 ml-1">
+                                Crear uno <i class="fas fa-external-link-alt text-[8px]"></i>
+                            </a>
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                                Dificultad (1-8)
+                            </label>
+                            <select id="lichess-level-select" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                                <option value="1" selected>Nivel 1 (Stockfish 800)</option>
+                                <option value="2">Nivel 2 (Stockfish 1100)</option>
+                                <option value="3">Nivel 3 (Stockfish 1400)</option>
+                                <option value="4">Nivel 4 (Stockfish 1700)</option>
+                                <option value="5">Nivel 5 (Stockfish 2000)</option>
+                                <option value="6">Nivel 6 (Stockfish 2300)</option>
+                                <option value="7">Nivel 7 (Stockfish 2500)</option>
+                                <option value="8">Nivel 8 (Stockfish 2700)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                                Jugar como
+                            </label>
+                            <select id="lichess-color-select" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                                <option value="white">Blancas (White)</option>
+                                <option value="black">Negras (Black)</option>
+                                <option value="random" selected>Aleatorio (Random)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                            Tiempo de Partida
+                        </label>
+                        <select id="lichess-time-select" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                            <option value="300,5">5 min + 5 seg (Blitz)</option>
+                            <option value="600,5">10 min + 5 seg (Rapid)</option>
+                            <option value="900,10" selected>15 min + 10 seg (Rapid)</option>
+                            <option value="1800,10">30 min + 10 seg (Clásica)</option>
+                        </select>
+                    </div>
+
+                    <button onclick="startLichessGame()" id="start-game-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 transition-colors p-3 rounded-lg font-bold flex justify-center items-center gap-2 shadow-lg mt-2">
+                        <i class="fas fa-play-circle text-lg"></i> Iniciar Partida contra Bot
+                    </button>
+                </div>
+
+                <!-- Estado del juego activo contra Lichess -->
+                <div id="lichess-active-panel" class="hidden flex flex-col gap-4 flex-1">
+                    <div class="bg-slate-900 border border-slate-700 rounded-lg p-4 flex flex-col gap-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                                <span class="relative flex h-2 w-2">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                </span>
+                                Partida Activa
+                            </span>
+                            <a id="lichess-game-link" href="#" target="_blank" class="text-xs text-blue-400 hover:underline flex items-center gap-1">
+                                Ver en Lichess <i class="fas fa-external-link-alt text-[10px]"></i>
+                            </a>
+                        </div>
+                        
+                        <div id="lichess-players" class="text-base font-bold text-white border-t border-slate-800 pt-2 text-center">
+                            Tú vs Stockfish Bot
+                        </div>
+
+                        <div id="lichess-game-status" class="text-sm font-medium text-center text-slate-300 py-1 bg-slate-800/50 rounded border border-slate-800">
+                            Esperando...
+                        </div>
+                    </div>
+
+                    <div class="mt-auto flex flex-col gap-2">
+                        <button onclick="resignLichessGame()" class="w-full bg-red-900/80 hover:bg-red-900 transition-colors p-2.5 rounded-lg text-sm font-bold flex justify-center items-center gap-2 border border-red-700">
+                            <i class="fas fa-flag"></i> Rendirse / Cancelar Partida
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts modularizados cargados ordenadamente -->
+    <script src="js/globals.js"></script>
+    <script src="js/analysis.js"></script>
+    <script src="js/lichess.js"></script>
+    <script src="js/board.js"></script>
+</body>
+</html>

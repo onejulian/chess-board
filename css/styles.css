@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #0f172a;
+    color: #f8fafc;
+}
+
+#board-container {
+    width: 100%;
+    max-width: 600px;
+    aspect-ratio: 1 / 1;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 100%;
+    height: 100%;
+}
+
+.square {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.light { background-color: #ebecd0; color: #739552; }
+.dark { background-color: #739552; color: #ebecd0; }
+
+.piece {
+    width: 90%;
+    height: 90%;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    z-index: 10;
+    pointer-events: none; /* Permite hacer clic a través de la pieza hacia el cuadrado */
+    transition: transform 0.1s ease;
+}
+
+.square:hover .piece {
+    transform: scale(1.05);
+}
+
+.selected {
+    background-color: rgba(255, 255, 51, 0.6) !important;
+}
+
+/* Indicador acentuado para capturas */
+.global-capture::after {
+    content: '';
+    position: absolute;
+    width: 90%;
+    height: 90%;
+    border: 5px solid #ef4444; /* Rojo acentuado */
+    border-radius: 50%;
+    z-index: 15;
+    pointer-events: none;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Ocultar barra de scroll en el historial */
+#move-list::-webkit-scrollbar { width: 6px; }
+#move-list::-webkit-scrollbar-track { background: #1e293b; }
+#move-list::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+
+/* Flecha dorada intermitente de análisis */
+@keyframes golden-pulse {
+    0%, 100% {
+        opacity: 0.35;
+        stroke-width: 0.12;
+    }
+    50% {
+        opacity: 1;
+        stroke-width: 0.22;
+        stroke: #fbbf24; /* Amarillo dorado muy brillante */
+    }
+}
+
+.golden-arrow {
+    animation: golden-pulse 1.4s infinite ease-in-out;
+    filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.6));
+}
+
+/* Animación del movimiento del bot */
+.bot-moving {
+    z-index: 100 !important;
+    filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.8)) drop-shadow(0 0 4px rgba(59, 130, 246, 0.4));
+    scale: 1.15;
+}
