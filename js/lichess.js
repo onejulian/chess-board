@@ -24,9 +24,19 @@ async function startLichessGame() {
 
     const level = document.getElementById('lichess-level-select').value;
     const color = document.getElementById('lichess-color-select').value;
-    const timeVal = document.getElementById('lichess-time-select').value.split(',');
-    const limit = parseInt(timeVal[0]);
-    const increment = parseInt(timeVal[1]);
+    const timeSelectVal = document.getElementById('lichess-time-select').value;
+
+    const params = {
+        'level': level,
+        'color': color,
+        'variant': 'standard'
+    };
+
+    if (timeSelectVal !== 'unlimited') {
+        const timeVal = timeSelectVal.split(',');
+        params['clock.limit'] = parseInt(timeVal[0]);
+        params['clock.increment'] = parseInt(timeVal[1]);
+    }
 
     const btn = document.getElementById('start-game-btn');
     btn.disabled = true;
@@ -39,13 +49,7 @@ async function startLichessGame() {
                 'Authorization': `Bearer ${lichessToken}`,
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
-            body: new URLSearchParams({
-                'level': level,
-                'color': color,
-                'clock.limit': limit,
-                'clock.increment': increment,
-                'variant': 'standard'
-            })
+            body: new URLSearchParams(params)
         });
 
         if (!response.ok) {
