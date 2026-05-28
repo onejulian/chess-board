@@ -90,6 +90,24 @@ async function startLichessGame() {
         const activePanel = document.getElementById('lichess-active-panel');
         activePanel.classList.remove('hidden');
 
+        // Resetear badge y botones a estado activo
+        const badge = document.getElementById('lichess-game-badge');
+        const badgeText = document.getElementById('lichess-badge-text');
+        const badgePulse = document.getElementById('lichess-badge-pulse');
+        if (badge) badge.className = "text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1";
+        if (badgeText) badgeText.innerText = "Partida Activa";
+        if (badgePulse) {
+            badgePulse.innerHTML = `
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            `;
+        }
+
+        const resignBtn = document.getElementById('lichess-resign-btn');
+        const newGameBtn = document.getElementById('lichess-new-game-btn');
+        if (resignBtn) resignBtn.classList.remove('hidden');
+        if (newGameBtn) newGameBtn.classList.add('hidden');
+
         document.getElementById('lichess-game-link').href = data.url;
         
         // Limpiar juego local
@@ -383,6 +401,21 @@ function handleLichessEvent(event) {
         else if (status === 'draw') endMsg = "Tablas. Partida finalizada.";
         
         document.getElementById('lichess-game-status').innerText = endMsg;
+
+        // Actualizar interfaz para reflejar partida finalizada
+        const badge = document.getElementById('lichess-game-badge');
+        const badgeText = document.getElementById('lichess-badge-text');
+        const badgePulse = document.getElementById('lichess-badge-pulse');
+        if (badge) badge.className = "text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1";
+        if (badgeText) badgeText.innerText = "Partida Finalizada";
+        if (badgePulse) {
+            badgePulse.innerHTML = `<span class="relative inline-flex rounded-full h-2 w-2 bg-slate-500"></span>`;
+        }
+
+        const resignBtn = document.getElementById('lichess-resign-btn');
+        const newGameBtn = document.getElementById('lichess-new-game-btn');
+        if (resignBtn) resignBtn.classList.add('hidden');
+        if (newGameBtn) newGameBtn.classList.remove('hidden');
     } else {
         const isMyTurn = (game.turn() === userColor);
         document.getElementById('lichess-game-status').innerHTML = isMyTurn 

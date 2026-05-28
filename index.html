@@ -170,12 +170,12 @@
                 <div id="lichess-active-panel" class="hidden flex flex-col gap-4 flex-1">
                     <div class="bg-slate-900 border border-slate-700 rounded-lg p-4 flex flex-col gap-3">
                         <div class="flex justify-between items-center">
-                            <span class="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                                <span class="relative flex h-2 w-2">
+                            <span id="lichess-game-badge" class="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                                <span id="lichess-badge-pulse" class="relative flex h-2 w-2">
                                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                     <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                 </span>
-                                Partida Activa
+                                <span id="lichess-badge-text">Partida Activa</span>
                             </span>
                             <a id="lichess-game-link" href="#" target="_blank" class="text-xs text-blue-400 hover:underline flex items-center gap-1">
                                 Ver en Lichess <i class="fas fa-external-link-alt text-[10px]"></i>
@@ -192,8 +192,11 @@
                     </div>
 
                     <div class="mt-auto flex flex-col gap-2">
-                        <button onclick="resignLichessGame()" class="w-full bg-red-900/80 hover:bg-red-900 transition-colors p-2.5 rounded-lg text-sm font-bold flex justify-center items-center gap-2 border border-red-700">
+                        <button id="lichess-resign-btn" onclick="resignLichessGame()" class="w-full bg-red-900/80 hover:bg-red-900 transition-colors p-2.5 rounded-lg text-sm font-bold flex justify-center items-center gap-2 border border-red-700">
                             <i class="fas fa-flag"></i> Rendirse / Cancelar Partida
+                        </button>
+                        <button id="lichess-new-game-btn" onclick="stopLichessSession()" class="hidden w-full bg-emerald-600 hover:bg-emerald-500 transition-colors p-2.5 rounded-lg text-sm font-bold flex justify-center items-center gap-2 shadow-lg">
+                            <i class="fas fa-arrow-left"></i> Volver a Configurar / Nueva Partida
                         </button>
                     </div>
                 </div>
