@@ -449,6 +449,66 @@ function exportPGN() {
     window.URL.revokeObjectURL(url);
 }
 
+function copyPGN() {
+    const pgn = game.pgn();
+    if (!pgn) {
+        alert("La partida está vacía. Realiza algún movimiento para copiar.");
+        return;
+    }
+
+    const copyBtn = document.getElementById('copy-pgn-btn');
+    const copyIcon = document.getElementById('copy-icon');
+    const copyText = document.getElementById('copy-text');
+
+    function showSuccessFeedback() {
+        if (copyBtn && copyIcon && copyText) {
+            // Guardar estado original
+            const originalIconClass = copyIcon.className;
+            const originalText = copyText.innerText;
+
+            // Cambiar temporalmente a estado de éxito (verde/esmeralda)
+            copyBtn.classList.remove('bg-slate-700', 'hover:bg-slate-600', 'text-blue-300');
+            copyBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500', 'text-white');
+            copyIcon.className = 'fas fa-check';
+            copyText.innerText = '¡Copiado!';
+
+            setTimeout(() => {
+                // Revertir a estado original
+                copyBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500', 'text-white');
+                copyBtn.classList.add('bg-slate-700', 'hover:bg-slate-600', 'text-blue-300');
+                copyIcon.className = originalIconClass;
+                copyText.innerText = originalText;
+            }, 2000);
+        }
+    }
+
+    navigator.clipboard.writeText(pgn).then(() => {
+        showSuccessFeedback();
+    }).catch(err => {
+        console.warn('Fallo navigator.clipboard, usando fallback...', err);
+        // Fallback usando un textarea temporal
+        try {
+            const textarea = document.createElement('textarea');
+            textarea.value = pgn;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            if (successful) {
+                showSuccessFeedback();
+            } else {
+                alert("No se pudo copiar la partida automáticamente.");
+            }
+        } catch (fallbackErr) {
+            alert("No se pudo copiar la partida automáticamente. Por favor expórtala como archivo.");
+        }
+    });
+}
+
 function animateBotMove() {
     if (typeof botTransition !== 'undefined' && botTransition) {
         const fromSquareEl = document.querySelector(`[data-square="${botTransition.from}"]`);
