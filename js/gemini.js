@@ -27,6 +27,10 @@ let currentGeminiResponseText = '';
 let currentGeminiResponseMoveIndex = -1;
 let activeGameGeminiComments = {};
 
+// Track if the user manually closed the AI comment panel for a specific move
+// so we don't auto-reopen it on every renderBoard() call
+let aiCommentPanelClosedForMoveIndex = -1;
+
 function initGemini() {
     const keyInput = document.getElementById('gemini-api-key-input');
 
@@ -239,6 +243,8 @@ function removeGeminiCommentFromHistory(gameId, moveIndex) {
 function _getCurrentMoveIndex() {
     if (reviewMode && reviewGame) {
         return reviewIndex;
+    } else if (lichessGameActive && selectedMoveIndex !== -1) {
+        return selectedMoveIndex;
     } else {
         return game.history().length - 1;
     }
@@ -250,7 +256,7 @@ function _getSavedCommentForCurrentMove() {
         const comments = reviewGame.geminiComments || {};
         return comments[reviewIndex] || null;
     } else if (lichessGameActive) {
-        const idx = game.history().length - 1;
+        const idx = _getCurrentMoveIndex();
         return activeGameGeminiComments[idx] || null;
     }
     return null;
@@ -261,13 +267,11 @@ function _getSavedCommentForCurrentMove() {
 function saveCurrentGeminiAnalysis() {
     if (!currentGeminiResponseText) return;
 
-    const moves = game.history();
-
     if (reviewMode && reviewGame) {
         saveGeminiCommentToHistory(reviewGame.id, reviewIndex, currentGeminiResponseText);
         currentGeminiResponseMoveIndex = reviewIndex;
     } else if (lichessGameActive) {
-        const moveIndex = moves.length - 1;
+        const moveIndex = _getCurrentMoveIndex();
         activeGameGeminiComments[moveIndex] = currentGeminiResponseText;
         currentGeminiResponseMoveIndex = moveIndex;
     }
@@ -279,8 +283,6 @@ function saveCurrentGeminiAnalysis() {
 }
 
 function deleteCurrentGeminiComment() {
-    const moves = game.history();
-
     if (reviewMode && reviewGame) {
         removeGeminiCommentFromHistory(reviewGame.id, reviewIndex);
         // If the deleted comment was the one in the response area, clear the saved state
@@ -288,7 +290,7 @@ function deleteCurrentGeminiComment() {
             currentGeminiResponseMoveIndex = -1;
         }
     } else if (lichessGameActive) {
-        const moveIndex = moves.length - 1;
+        const moveIndex = _getCurrentMoveIndex();
         delete activeGameGeminiComments[moveIndex];
         if (currentGeminiResponseMoveIndex === moveIndex) {
             currentGeminiResponseMoveIndex = -1;
@@ -386,8 +388,30 @@ function updateAnalysisTabAIPanel() {
     }
 
     const savedComment = _getSavedCommentForCurrentMove();
+    const currentIdx = _getCurrentMoveIndex();
+
+    // Auto-reset the 'closed' flag if the user has navigated to a different move
+    if (aiCommentPanelClosedForMoveIndex !== -1 && aiCommentPanelClosedForMoveIndex !== currentIdx) {
+        aiCommentPanelClosedForMoveIndex = -1;
+    }
 
     if (savedComment) {
+        // If the user already manually closed this panel for the current move, don't reopen it
+        if (aiCommentPanelClosedForMoveIndex === currentIdx) {
+            // Keep the panel hidden, show the move list and request button
+            _setMoveListVisible(true);
+            commentPanel.classList.add('hidden');
+            commentPanel.classList.remove('flex');
+            requestPanel.classList.remove('hidden');
+            if (requestBtn) {
+                const hasKey = !!geminiApiKey;
+                requestBtn.disabled = !hasKey;
+                requestBtn.title = hasKey ? '' : 'Configura tu Gemini API Key en la pestaña Gemini AI';
+                _updateRequestBtnLabel(requestBtn, currentIdx);
+            }
+            return;
+        }
+
         // Hide move list, show AI comment panel in its place
         _setMoveListVisible(false);
         commentPanel.classList.remove('hidden');
@@ -412,7 +436,21 @@ function updateAnalysisTabAIPanel() {
             const hasKey = !!geminiApiKey;
             requestBtn.disabled = !hasKey;
             requestBtn.title = hasKey ? '' : 'Configura tu Gemini API Key en la pestaña Gemini AI';
+            _updateRequestBtnLabel(requestBtn, currentIdx);
         }
+    }
+}
+
+// Helper: update the text label of the analysis-tab request button
+function _updateRequestBtnLabel(btn, moveIdx) {
+    if (!btn) return;
+    const moves = lichessGameActive && !reviewMode ? game.history() :
+                  (reviewMode && reviewGame ? reviewGame.moves : game.history());
+    if (moveIdx >= 0 && moveIdx < moves.length) {
+        const moveNum = Math.floor(moveIdx / 2) + 1;
+        btn.innerHTML = `<i class="fas fa-brain"></i> Analizar: ${moveNum}. ${moves[moveIdx]}`;
+    } else {
+        btn.innerHTML = `<i class="fas fa-brain"></i> Solicitar An\u00e1lisis IA`;
     }
 }
 
@@ -426,12 +464,22 @@ function closeAICommentPanel() {
     }
     if (requestPanel) requestPanel.classList.add('hidden');
     _setMoveListVisible(true);
+
+    // Remember that the user closed the panel for this specific move index
+    // so we don't auto-reopen it when renderBoard() is called again
+    aiCommentPanelClosedForMoveIndex = _getCurrentMoveIndex();
 }
 
 // ─── Quick analysis request from Analysis tab ────────────────────────────────
 
 async function askGeminiFromAnalysisTab() {
     const requestBtn = document.getElementById('ai-request-btn');
+
+    // Determine label for the move being analyzed
+    const moves = game.history();
+    const targetIdx = _getCurrentMoveIndex();
+    const effectiveIdx = (targetIdx >= 0 && targetIdx < moves.length) ? targetIdx : moves.length - 1;
+    const moveLabel = moves[effectiveIdx] ? `${Math.floor(effectiveIdx / 2) + 1}. ${moves[effectiveIdx]}` : 'este movimiento';
 
     // Show spinner on button
     if (requestBtn) {
@@ -440,18 +488,16 @@ async function askGeminiFromAnalysisTab() {
     }
 
     try {
-        // Run the Gemini query (result lands in currentGeminiResponseText)
-        await askGemini();
+        // Reset the 'manually closed' flag so the panel can show the new analysis result
+        aiCommentPanelClosedForMoveIndex = -1;
 
-        // If successful and we have a response, auto-save it immediately and update panels
-        if (currentGeminiResponseText) {
-            saveCurrentGeminiAnalysis();
-        }
+        // Run the Gemini query (result lands in currentGeminiResponseText and auto-saves if active/review)
+        await askGemini();
     } finally {
         // Restore button regardless (panels will update themselves)
         if (requestBtn) {
             requestBtn.disabled = false;
-            requestBtn.innerHTML = `<i class="fas fa-brain"></i> Solicitar An\u00e1lisis IA para este movimiento`;
+            requestBtn.innerHTML = `<i class="fas fa-brain"></i> Analizar: ${moveLabel}`;
         }
     }
 }
@@ -491,23 +537,45 @@ function updateGeminiResponseForCurrentMove() {
                 if (badgeEl) badgeEl.classList.add('hidden');
             }
         }
-    } else {
-        // Active game / Free analysis mode
-        const moveIndex = moves.length - 1;
-        if (lichessGameActive && activeGameGeminiComments[moveIndex] !== undefined) {
-            currentGeminiResponseText = activeGameGeminiComments[moveIndex];
-            currentGeminiResponseMoveIndex = moveIndex;
+    } else if (lichessGameActive) {
+        // Active game: show comment for the selectedMoveIndex (or latest)
+        if (activeGameGeminiComments[currentIdx] !== undefined) {
+            currentGeminiResponseText = activeGameGeminiComments[currentIdx];
+            currentGeminiResponseMoveIndex = currentIdx;
             responseEl.innerHTML = marked.parse(currentGeminiResponseText);
             if (badgeEl) badgeEl.classList.remove('hidden');
         } else {
-            if (currentGeminiResponseMoveIndex !== moveIndex) {
+            if (currentGeminiResponseMoveIndex !== currentIdx) {
                 currentGeminiResponseText = '';
                 currentGeminiResponseMoveIndex = -1;
             }
             if (!currentGeminiResponseText) {
-                responseEl.innerHTML = `<p class="text-slate-400 text-xs italic">Presiona el botón para analizar el último movimiento con inteligencia artificial.</p>`;
+                const moveLabel = currentIdx >= 0 ? moves[currentIdx] : null;
+                const moveLabelStr = moveLabel ? ` para <strong>${moveLabel}</strong>` : '';
+                responseEl.innerHTML = `<p class="text-slate-400 text-xs italic">Presiona el botón para analizar el movimiento${moveLabelStr} con inteligencia artificial.</p>`;
                 if (badgeEl) badgeEl.classList.add('hidden');
             }
+        }
+
+        // Update the ask button label to indicate which move will be analyzed
+        if (askBtn && moves.length > 0) {
+            const moveLabel = currentIdx >= 0 ? moves[currentIdx] : moves[moves.length - 1];
+            const moveNum = currentIdx >= 0 ? Math.floor(currentIdx / 2) + 1 : Math.floor((moves.length - 1) / 2) + 1;
+            askBtn.innerHTML = `<i class="fas fa-brain"></i> Analizar: ${moveNum}. ${moveLabel}`;
+        }
+    } else {
+        // Free analysis mode
+        const moveIndex = moves.length - 1;
+        if (currentGeminiResponseMoveIndex !== moveIndex) {
+            currentGeminiResponseText = '';
+            currentGeminiResponseMoveIndex = -1;
+        }
+        if (!currentGeminiResponseText) {
+            responseEl.innerHTML = `<p class="text-slate-400 text-xs italic">Presiona el botón para analizar el último movimiento con inteligencia artificial.</p>`;
+            if (badgeEl) badgeEl.classList.add('hidden');
+        }
+        if (askBtn) {
+            askBtn.innerHTML = `<i class="fas fa-brain"></i> Pregunta Predeterminada`;
         }
     }
 
@@ -542,6 +610,10 @@ async function askGemini() {
         return;
     }
 
+    // Determine which move index to analyze
+    const targetIndex = _getCurrentMoveIndex();
+    const effectiveIndex = (targetIndex >= 0 && targetIndex < moves.length) ? targetIndex : moves.length - 1;
+
     const askBtn = document.getElementById('gemini-ask-btn');
     const responseEl = document.getElementById('gemini-response');
     const badgeEl = document.getElementById('gemini-status-badge');
@@ -559,15 +631,18 @@ async function askGemini() {
     }
     if (badgeEl) badgeEl.classList.add('hidden');
 
-    // Format moves history list
+    // Build the move history up to effectiveIndex
+    const movesUpTo = moves.slice(0, effectiveIndex + 1);
+
+    // Format moves history list up to the target move
     let formattedHistory = "";
-    for (let i = 0; i < moves.length; i += 2) {
-        formattedHistory += `${Math.floor(i / 2) + 1}. ${moves[i]} ${moves[i + 1] || ""} `;
+    for (let i = 0; i < movesUpTo.length; i += 2) {
+        formattedHistory += `${Math.floor(i / 2) + 1}. ${movesUpTo[i]} ${movesUpTo[i + 1] || ""} `;
     }
     formattedHistory = formattedHistory.trim();
 
-    const lastMove = moves[moves.length - 1];
-    const prevMove = moves.length >= 2 ? moves[moves.length - 2] : "Ninguno (inicio de la partida)";
+    const targetMove = movesUpTo[effectiveIndex];
+    const prevMove = effectiveIndex >= 1 ? movesUpTo[effectiveIndex - 1] : "Ninguno (inicio de la partida)";
 
     // Construct prompt
     const prompt = `Quisiera entender a profundidad la posible intencionalidad detras del ultimo movimiento en esta partida, pon el codigo y la explicacion diciendo primero el movimiento previo que hicieron las oponentes y si el ultimo movimiento fue una respuesta directa o indirecta a ese movimiento de las oponentes.
@@ -577,7 +652,7 @@ ${formattedHistory}
 
 Detalles específicos del turno:
 - Movimiento previo de las oponentes: ${prevMove}
-- Último movimiento realizado: ${lastMove}
+- Último movimiento realizado: ${targetMove}
 
 Por favor, escribe tu respuesta en español. Asegúrate de incluir el código/notación del movimiento en un formato claro (como bloques de código) y proporciona un análisis táctico o estratégico a profundidad.`;
 
@@ -635,6 +710,11 @@ Por favor, escribe tu respuesta en español. Asegúrate de incluir el código/no
 
         // Show the save action button
         renderGeminiSaveActionArea();
+
+        // Auto-save the comment immediately if in an active game or review mode
+        if (lichessGameActive || reviewMode) {
+            saveCurrentGeminiAnalysis();
+        }
 
     } catch (e) {
         console.error("Error al consultar Gemini:", e);

@@ -400,6 +400,9 @@ function handleLichessEvent(event) {
             game.move(m, { sloppy: true });
         }
         selectedSquare = null;
+        // Reset selected-move tracking so panels switch to the latest move
+        selectedMoveIndex = -1;
+        aiCommentPanelClosedForMoveIndex = -1;
         renderBoard();
     } else {
         updateStatus();
@@ -456,9 +459,8 @@ function saveGameToHistory(winner, status) {
         return;
     }
 
-    const saveCheckbox = document.getElementById('gemini-save-option');
-    const isSaveChecked = saveCheckbox ? saveCheckbox.checked : false;
-    const commentsToSave = isSaveChecked ? { ...activeGameGeminiComments } : {};
+    // Always persist AI comments made during the active game into the history record
+    const commentsToSave = { ...activeGameGeminiComments };
 
     const gameData = {
         id: lichessGameId,

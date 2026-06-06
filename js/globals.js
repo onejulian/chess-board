@@ -25,6 +25,9 @@ let reviewMoves = [];
 let lichessWhitePlayer = 'Blancas';
 let lichessBlackPlayer = 'Negras';
 
+// Índice del movimiento seleccionado durante partida activa (-1 = último movimiento)
+let selectedMoveIndex = -1;
+
 let streamAbortController = null;
 let pollingIntervalId = null;
 

@@ -204,3 +204,37 @@ body {
 #gemini-response::-webkit-scrollbar-track { background: #1e293b; }
 #gemini-response::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
 
+/* Soporte para texto vertical en etiquetas de piezas eliminadas (pantallas grandes) */
+@media (min-width: 768px) {
+    .vertical-text {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        transform: rotate(180deg);
+        white-space: nowrap;
+    }
+}
+
+/* Ocultar barras de scroll en contenedores de piezas eliminadas */
+#captured-top-pieces::-webkit-scrollbar,
+#captured-bottom-pieces::-webkit-scrollbar {
+    display: none;
+}
+#captured-top-pieces,
+#captured-bottom-pieces {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+/* Efectos de transición e iluminación para las piezas eliminadas */
+#captured-top-pieces img,
+#captured-bottom-pieces img {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
+}
+#captured-top-pieces img:hover,
+#captured-bottom-pieces img:hover {
+    transform: scale(1.25);
+    z-index: 50;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+}
+

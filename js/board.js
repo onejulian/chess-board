@@ -81,6 +81,169 @@ function toggleShowAllMoves(checked) {
     renderBoard();
 }
 
+// ─── LÓGICA DE PIEZAS ELIMINADAS (CAPTURADAS) ───────────────────────────────
+
+function getCapturedPieces() {
+    const board = game.board();
+    
+    // Contar las piezas que están actualmente en el tablero
+    const currentCounts = {
+        w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },
+        b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 }
+    };
+    
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const piece = board[r][c];
+            if (piece) {
+                currentCounts[piece.color][piece.type]++;
+            }
+        }
+    }
+    
+    // Cantidades iniciales estándar en ajedrez
+    const startingCounts = {
+        w: { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 },
+        b: { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 }
+    };
+    
+    const capturedByWhite = [];
+    const capturedByBlack = [];
+    
+    const pieceTypes = ['p', 'n', 'b', 'r', 'q'];
+    
+    // Las piezas negras que faltan fueron capturadas por las Blancas (minúsculas)
+    pieceTypes.forEach(t => {
+        const missing = startingCounts.b[t] - currentCounts.b[t];
+        for (let i = 0; i < missing; i++) {
+            capturedByWhite.push(t);
+        }
+    });
+    
+    // Las piezas blancas que faltan fueron capturadas por las Negras (mayúsculas)
+    pieceTypes.forEach(t => {
+        const missing = startingCounts.w[t] - currentCounts.w[t];
+        for (let i = 0; i < missing; i++) {
+            capturedByBlack.push(t.toUpperCase());
+        }
+    });
+    
+    // Calcular la puntuación total del material en el tablero para determinar la ventaja
+    const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+    
+    let whiteScore = 0;
+    let blackScore = 0;
+    
+    for (const t in currentCounts.w) {
+        whiteScore += currentCounts.w[t] * pieceValues[t];
+    }
+    for (const t in currentCounts.b) {
+        blackScore += currentCounts.b[t] * pieceValues[t];
+    }
+    
+    // Ordenar las listas por valor de pieza (Peones, Caballos, Alfiles, Torres, Damas)
+    const pieceOrder = { p: 1, n: 2, b: 3, r: 4, q: 5, P: 1, N: 2, B: 3, R: 4, Q: 5 };
+    capturedByWhite.sort((a, b) => pieceOrder[a] - pieceOrder[b]);
+    capturedByBlack.sort((a, b) => pieceOrder[a] - pieceOrder[b]);
+    
+    return {
+        capturedByWhite, // Piezas negras capturadas por las Blancas
+        capturedByBlack, // Piezas blancas capturadas por las Negras
+        whiteScore,
+        blackScore
+    };
+}
+
+function updateCapturedPieces() {
+    const captured = getCapturedPieces();
+    
+    // Determinar quién está arriba y quién abajo según la orientación del tablero (isFlipped)
+    const topColor = isFlipped ? 'w' : 'b';
+    const bottomColor = isFlipped ? 'b' : 'w';
+    
+    const topLabel = topColor === 'w' ? 'Blancas' : 'Negras';
+    const bottomLabel = bottomColor === 'w' ? 'Blancas' : 'Negras';
+    
+    const topIndicator = document.getElementById('captured-top-color-indicator');
+    const bottomIndicator = document.getElementById('captured-bottom-color-indicator');
+    
+    if (topIndicator) {
+        topIndicator.className = `w-3 h-3 rounded-full border border-slate-600 shadow-sm ${topColor === 'w' ? 'bg-white' : 'bg-slate-950'}`;
+    }
+    if (bottomIndicator) {
+        bottomIndicator.className = `w-3 h-3 rounded-full border border-slate-600 shadow-sm ${bottomColor === 'w' ? 'bg-white' : 'bg-slate-950'}`;
+    }
+    
+    const topLabelEl = document.getElementById('captured-top-label');
+    const bottomLabelEl = document.getElementById('captured-bottom-label');
+    if (topLabelEl) topLabelEl.innerText = topLabel;
+    if (bottomLabelEl) bottomLabelEl.innerText = bottomLabel;
+    
+    // El jugador de arriba capturó las piezas del jugador de abajo, y viceversa
+    const topPiecesList = topColor === 'b' ? captured.capturedByBlack : captured.capturedByWhite;
+    const bottomPiecesList = bottomColor === 'b' ? captured.capturedByBlack : captured.capturedByWhite;
+    
+    // Renderizar piezas del panel superior
+    const topPiecesContainer = document.getElementById('captured-top-pieces');
+    if (topPiecesContainer) {
+        topPiecesContainer.innerHTML = '';
+        topPiecesList.forEach(p => {
+            const img = document.createElement('img');
+            img.src = pieceImages[p];
+            img.className = 'w-5 h-5 md:w-6 md:h-6 object-contain';
+            img.alt = p;
+            topPiecesContainer.appendChild(img);
+        });
+    }
+    
+    // Renderizar piezas del panel inferior
+    const bottomPiecesContainer = document.getElementById('captured-bottom-pieces');
+    if (bottomPiecesContainer) {
+        bottomPiecesContainer.innerHTML = '';
+        bottomPiecesList.forEach(p => {
+            const img = document.createElement('img');
+            img.src = pieceImages[p];
+            img.className = 'w-5 h-5 md:w-6 md:h-6 object-contain';
+            img.alt = p;
+            bottomPiecesContainer.appendChild(img);
+        });
+    }
+    
+    // Cálculo y muestra de la ventaja de material
+    const topAdvantageEl = document.getElementById('captured-top-advantage');
+    const bottomAdvantageEl = document.getElementById('captured-bottom-advantage');
+    
+    if (topAdvantageEl && bottomAdvantageEl) {
+        topAdvantageEl.innerText = '';
+        bottomAdvantageEl.innerText = '';
+        topAdvantageEl.classList.add('hidden');
+        bottomAdvantageEl.classList.add('hidden');
+        
+        const whiteAdv = captured.whiteScore - captured.blackScore;
+        const blackAdv = captured.blackScore - captured.whiteScore;
+        
+        if (whiteAdv > 0) {
+            // Las Blancas tienen ventaja
+            if (bottomColor === 'w') {
+                bottomAdvantageEl.innerText = `+${whiteAdv}`;
+                bottomAdvantageEl.classList.remove('hidden');
+            } else {
+                topAdvantageEl.innerText = `+${whiteAdv}`;
+                topAdvantageEl.classList.remove('hidden');
+            }
+        } else if (blackAdv > 0) {
+            // Las Negras tienen ventaja
+            if (bottomColor === 'b') {
+                bottomAdvantageEl.innerText = `+${blackAdv}`;
+                bottomAdvantageEl.classList.remove('hidden');
+            } else {
+                topAdvantageEl.innerText = `+${blackAdv}`;
+                topAdvantageEl.classList.remove('hidden');
+            }
+        }
+    }
+}
+
 function renderBoard() {
     if (reviewMode || (lichessGameActive && game.turn() !== userColor)) {
         boardEl.classList.add('board-disabled');
@@ -195,6 +358,7 @@ function renderBoard() {
 
     updateStatus();
     updateMoveHistory();
+    updateCapturedPieces();
     animateBotMove();
     animateReviewMove();
 
@@ -420,6 +584,9 @@ function handleSquareClick(squareId) {
             });
             
             selectedSquare = null;
+            // Reset selected move index so panels show the latest move after playing
+            selectedMoveIndex = -1;
+            aiCommentPanelClosedForMoveIndex = -1;
             renderBoard();
             
             // Si partida de Lichess activa, subir el movimiento
@@ -486,6 +653,19 @@ function updateMoveHistory() {
         highlightIndex = movesToDisplay.length - 1;
     }
 
+    // During active game: track the selected move (defaults to last)
+    const activeSelectedIdx = (lichessGameActive && !reviewMode && selectedMoveIndex !== -1)
+        ? selectedMoveIndex
+        : highlightIndex;
+
+    // Update the move-list heading hint for active games
+    const heading = document.getElementById('move-list-heading');
+    if (heading && lichessGameActive && !reviewMode && movesToDisplay.length > 0) {
+        heading.innerHTML = `Historial de Jugadas <span class="text-purple-400 font-normal normal-case tracking-normal text-[9px] ml-1 opacity-80"><i class="fas fa-mouse-pointer text-[8px]"></i> clic para analizar</span>`;
+    } else if (heading && !document.getElementById('ai-comment-close-btn')?.classList.contains('flex')) {
+        heading.innerText = 'Historial de Jugadas';
+    }
+
     // Helper: check if a move index has a saved AI comment
     function hasAIComment(idx) {
         if (reviewMode && reviewGame) {
@@ -516,7 +696,20 @@ function updateMoveHistory() {
             badge.title = 'Tiene análisis IA guardado';
             wMove.appendChild(badge);
         }
-        if (i === highlightIndex) {
+
+        // Highlight logic
+        if (lichessGameActive && !reviewMode) {
+            // Active game: purple for selected, normal for others
+            if (i === activeSelectedIdx) {
+                wMove.classList.add('bg-purple-600/40', 'text-purple-200', 'font-bold', 'border', 'border-purple-500/40');
+            } else if (i === highlightIndex) {
+                wMove.classList.add('bg-blue-500/20', 'text-blue-300', 'border', 'border-blue-500/20');
+            } else {
+                wMove.classList.add('text-white', 'hover:bg-slate-700');
+            }
+            // Make clickable to select this move for AI analysis
+            wMove.addEventListener('click', () => selectMoveForAnalysis(i));
+        } else if (i === highlightIndex) {
             wMove.classList.add('bg-blue-500/40', 'text-blue-300', 'font-bold', 'border', 'border-blue-500/30');
         } else {
             wMove.classList.add('text-white', 'hover:bg-slate-700');
@@ -538,7 +731,17 @@ function updateMoveHistory() {
             const bText = document.createElement('span');
             bText.innerText = movesToDisplay[i+1];
             bMove.appendChild(bText);
-            if (i + 1 === highlightIndex) {
+
+            if (lichessGameActive && !reviewMode) {
+                if (i + 1 === activeSelectedIdx) {
+                    bMove.classList.add('bg-purple-600/40', 'text-purple-200', 'font-bold', 'border', 'border-purple-500/40');
+                } else if (i + 1 === highlightIndex) {
+                    bMove.classList.add('bg-blue-500/20', 'text-blue-300', 'border', 'border-blue-500/20');
+                } else {
+                    bMove.classList.add('text-white', 'hover:bg-slate-700');
+                }
+                bMove.addEventListener('click', () => selectMoveForAnalysis(i + 1));
+            } else if (i + 1 === highlightIndex) {
                 bMove.classList.add('bg-blue-500/40', 'text-blue-300', 'font-bold', 'border', 'border-blue-500/30');
             } else {
                 bMove.classList.add('text-white', 'hover:bg-slate-700');
@@ -555,11 +758,33 @@ function updateMoveHistory() {
     }
     
     // Auto-scroll logic
-    const activeEl = listEl.querySelector('.bg-blue-500\\/40');
+    const activeEl = listEl.querySelector('.bg-purple-600\\/40') || listEl.querySelector('.bg-blue-500\\/40');
     if (activeEl) {
         activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     } else {
         listEl.scrollTop = listEl.scrollHeight;
+    }
+}
+
+// Select a specific move from the history for AI analysis during an active game
+function selectMoveForAnalysis(index) {
+    if (!lichessGameActive || reviewMode) return;
+    const moves = game.history();
+    if (index < 0 || index >= moves.length) return;
+
+    // Toggle off if clicking the already-selected move (go back to last)
+    if (selectedMoveIndex === index) {
+        selectedMoveIndex = -1;
+    } else {
+        selectedMoveIndex = index;
+    }
+
+    // Reset the 'closed' state for AI panel so it reacts to the new selection
+    aiCommentPanelClosedForMoveIndex = -1;
+
+    updateMoveHistory();
+    if (typeof updateGeminiResponseForCurrentMove === 'function') {
+        updateGeminiResponseForCurrentMove();
     }
 }
 
