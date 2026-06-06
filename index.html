@@ -7,6 +7,7 @@
     <title>Tablero de Análisis de Ajedrez</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
 </head>
@@ -55,18 +56,22 @@
             class="w-full lg:w-1/3 bg-slate-800 rounded-xl p-4 sm:p-6 shadow-xl flex flex-col min-h-[420px] sm:min-h-[500px] lg:h-[650px]">
 
             <!-- Tabs Headers -->
-            <div class="flex border-b border-slate-700 mb-4">
+            <div class="flex border-b border-slate-700 mb-4 overflow-x-auto">
                 <button id="tab-analysis-btn" onclick="switchTab('analysis')"
-                    class="flex-1 pb-2 font-bold text-xs sm:text-sm text-blue-400 border-b-2 border-blue-500 transition-colors">
+                    class="flex-1 pb-2 font-bold text-[10px] sm:text-xs text-blue-400 border-b-2 border-blue-500 transition-colors whitespace-nowrap">
                     <i class="fas fa-search mr-1"></i> Análisis
                 </button>
                 <button id="tab-lichess-btn" onclick="switchTab('lichess')"
-                    class="flex-1 pb-2 font-bold text-xs sm:text-sm text-gray-400 border-b-2 border-transparent hover:text-white transition-colors">
+                    class="flex-1 pb-2 font-bold text-[10px] sm:text-xs text-gray-400 border-b-2 border-transparent hover:text-white transition-colors whitespace-nowrap">
                     <i class="fas fa-robot mr-1"></i> Lichess Bot
                 </button>
                 <button id="tab-history-btn" onclick="switchTab('history')"
-                    class="flex-1 pb-2 font-bold text-xs sm:text-sm text-gray-400 border-b-2 border-transparent hover:text-white transition-colors">
+                    class="flex-1 pb-2 font-bold text-[10px] sm:text-xs text-gray-400 border-b-2 border-transparent hover:text-white transition-colors whitespace-nowrap">
                     <i class="fas fa-history mr-1"></i> Historial
+                </button>
+                <button id="tab-gemini-btn" onclick="switchTab('gemini')"
+                    class="flex-1 pb-2 font-bold text-[10px] sm:text-xs text-gray-400 border-b-2 border-transparent hover:text-white transition-colors whitespace-nowrap">
+                    <i class="fas fa-brain mr-1"></i> Gemini AI
                 </button>
             </div>
 
@@ -91,10 +96,49 @@
                     Partida iniciada.
                 </div>
 
-                <h3 class="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Historial de Jugadas</h3>
+                <!-- Header row: label + toggle close button -->
+                <div class="flex justify-between items-center mb-2">
+                    <h3 id="move-list-heading" class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Historial de Jugadas
+                    </h3>
+                    <!-- Shown only when AI comment panel is open -->
+                    <button id="ai-comment-close-btn" onclick="closeAICommentPanel()"
+                        class="hidden items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-white bg-slate-700/60 hover:bg-slate-600 border border-slate-600/50 px-2 py-0.5 rounded-full transition-colors">
+                        <i class="fas fa-times"></i> Ver jugadas
+                    </button>
+                </div>
+
+                <!-- Move list -->
                 <div id="move-list"
-                    class="flex-1 bg-slate-900 rounded-lg p-3 overflow-y-auto mb-4 flex flex-col gap-1 text-sm font-mono border border-slate-700 min-h-[150px] max-h-[280px]">
+                    class="flex-1 bg-slate-900 rounded-lg p-3 overflow-y-auto mb-2 flex flex-col gap-1 text-sm font-mono border border-slate-700 min-h-[150px] max-h-[260px]">
                     <!-- Los movimientos se inyectarán aquí -->
+                </div>
+
+                <!-- Panel de Análisis IA: reemplaza visualmente al move-list cuando hay comentario guardado -->
+                <div id="ai-comment-panel"
+                    class="hidden flex-col gap-0 mb-2 bg-slate-900 border border-purple-800/60 rounded-lg min-h-[150px] max-h-[260px] overflow-hidden">
+                    <!-- Panel header -->
+                    <div class="flex items-center justify-between px-3 py-2 bg-purple-950/50 border-b border-purple-800/40 flex-shrink-0">
+                        <span class="text-[10px] font-bold text-purple-300 flex items-center gap-1.5 uppercase tracking-wider">
+                            <i class="fas fa-brain text-purple-400"></i> Análisis IA
+                        </span>
+                        <button id="ai-comment-delete-btn" onclick="deleteCurrentGeminiComment()"
+                            class="text-[10px] font-semibold text-red-400 hover:text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-900/40 px-2 py-0.5 rounded-full transition-colors flex items-center gap-1">
+                            <i class="fas fa-trash-alt"></i> Borrar
+                        </button>
+                    </div>
+                    <!-- Comment body -->
+                    <div id="ai-comment-text"
+                        class="flex-1 overflow-y-auto p-3 text-slate-300 text-xs leading-relaxed prose prose-invert prose-xs">
+                    </div>
+                </div>
+
+                <!-- Botón rápido para solicitar análisis IA -->
+                <div id="ai-request-panel" class="hidden mb-2">
+                    <button id="ai-request-btn" onclick="askGeminiFromAnalysisTab()"
+                        class="w-full bg-purple-900/50 hover:bg-purple-800/70 border border-purple-700/60 text-purple-300 hover:text-purple-200 transition-all p-2 rounded-xl text-xs font-bold flex justify-center items-center gap-2 shadow">
+                        <i class="fas fa-brain"></i> Solicitar Análisis IA para este movimiento
+                    </button>
                 </div>
 
                 <!-- Controles de Análisis -->
@@ -301,11 +345,75 @@
                     <i class="fas fa-trash-alt mr-1"></i> Borrar Todo el Historial
                 </button>
             </div>
+
+            <!-- Tab Content: Gemini AI -->
+            <div id="tab-gemini" class="hidden flex flex-col flex-1 h-full min-h-[300px]">
+                <div class="flex flex-col gap-3.5 flex-1 overflow-y-auto pr-1">
+                    <!-- API Key Input -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                            Gemini API Key
+                        </label>
+                        <div class="relative">
+                            <input type="password" id="gemini-api-key-input" oninput="handleApiKeyInput(this.value)"
+                                placeholder="AIzaSy..."
+                                class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white pr-10 focus:outline-none focus:border-blue-500">
+                            <button onclick="toggleApiKeyVisibility()"
+                                class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-white">
+                                <i id="gemini-key-eye-icon" class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Model Input and Dropdown -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 flex justify-between items-center">
+                            <span>Modelo de Gemini</span>
+                        </label>
+                        <div class="flex gap-2">
+                            <select id="gemini-model-select" onchange="handleModelSelectChange(this.value)"
+                                class="flex-1 w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                                <!-- Options populated dynamically -->
+                            </select>
+                            <button id="gemini-update-models-btn" onclick="updateAvailableModels()"
+                                class="bg-slate-700 hover:bg-slate-600 border border-slate-600 text-blue-300 transition-colors px-3 py-2 rounded text-sm font-semibold flex items-center justify-center gap-1.5 shadow"
+                                title="Actualizar modelos disponibles desde la API">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+
+
+                    <!-- Ask Button -->
+                    <button onclick="askGemini()" id="gemini-ask-btn"
+                        class="w-full bg-blue-600 hover:bg-blue-500 transition-colors p-2.5 rounded-lg font-bold flex justify-center items-center gap-2 shadow-lg">
+                        <i class="fas fa-brain"></i> Pregunta Predeterminada
+                    </button>
+
+                    <!-- Response Section -->
+                    <div class="flex flex-col gap-2 mt-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                Análisis de la Posición
+                            </span>
+                            <span id="gemini-status-badge" class="hidden px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-950/80 text-emerald-400 border border-emerald-800/80">
+                                Analizado
+                            </span>
+                        </div>
+                        <div id="gemini-response" class="bg-slate-900 rounded-lg p-3 text-slate-200 text-sm overflow-y-auto border border-slate-700 min-h-[140px] max-h-[240px]">
+                            <p class="text-slate-400 text-xs italic">Presiona el botón para analizar el último movimiento con inteligencia artificial.</p>
+                        </div>
+                        <!-- Botón guardar/estado guardado — inyectado dinámicamente por gemini.js -->
+                        <div id="gemini-save-action-area"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Scripts modularizados cargados ordenadamente -->
     <script src="js/globals.js"></script>
+    <script src="js/gemini.js"></script>
     <script src="js/analysis.js"></script>
     <script src="js/lichess.js"></script>
     <script src="js/board.js"></script>

@@ -18,21 +18,25 @@ function switchTab(tab) {
     const analysisBtn = document.getElementById('tab-analysis-btn');
     const lichessBtn = document.getElementById('tab-lichess-btn');
     const historyBtn = document.getElementById('tab-history-btn');
+    const geminiBtn = document.getElementById('tab-gemini-btn');
     const analysisContent = document.getElementById('tab-analysis');
     const lichessContent = document.getElementById('tab-lichess');
     const historyContent = document.getElementById('tab-history');
+    const geminiContent = document.getElementById('tab-gemini');
 
     // Clases base desactivadas y activadas
-    const inactiveClass = "flex-1 pb-2 font-bold text-xs sm:text-sm text-gray-400 border-b-2 border-transparent hover:text-white transition-colors";
-    const activeClass = "flex-1 pb-2 font-bold text-xs sm:text-sm text-blue-400 border-b-2 border-blue-500 transition-colors";
+    const inactiveClass = "flex-1 pb-2 font-bold text-[10px] sm:text-xs text-gray-400 border-b-2 border-transparent hover:text-white transition-colors whitespace-nowrap";
+    const activeClass = "flex-1 pb-2 font-bold text-[10px] sm:text-xs text-blue-400 border-b-2 border-blue-500 transition-colors whitespace-nowrap";
 
     analysisBtn.className = inactiveClass;
     lichessBtn.className = inactiveClass;
     historyBtn.className = inactiveClass;
+    if (geminiBtn) geminiBtn.className = inactiveClass;
 
     analysisContent.classList.add('hidden');
     lichessContent.classList.add('hidden');
     historyContent.classList.add('hidden');
+    if (geminiContent) geminiContent.classList.add('hidden');
 
     if (tab === 'analysis') {
         analysisBtn.className = activeClass;
@@ -44,6 +48,11 @@ function switchTab(tab) {
         historyBtn.className = activeClass;
         historyContent.classList.remove('hidden');
         renderHistoryList();
+    } else if (tab === 'gemini') {
+        if (geminiBtn && geminiContent) {
+            geminiBtn.className = activeClass;
+            geminiContent.classList.remove('hidden');
+        }
     }
 }
 
@@ -160,6 +169,11 @@ function renderBoard() {
     updateStatus();
     updateMoveHistory();
     animateBotMove();
+
+    // Actualizar la respuesta o estado del panel de Gemini
+    if (typeof updateGeminiResponseForCurrentMove === 'function') {
+        updateGeminiResponseForCurrentMove();
+    }
 }
 
 function drawArrows(moves) {
@@ -415,6 +429,16 @@ function updateMoveHistory() {
         movesToDisplay = game.history();
         highlightIndex = movesToDisplay.length - 1;
     }
+
+    // Helper: check if a move index has a saved AI comment
+    function hasAIComment(idx) {
+        if (reviewMode && reviewGame) {
+            return !!(reviewGame.geminiComments && reviewGame.geminiComments[idx] !== undefined);
+        } else if (typeof activeGameGeminiComments !== 'undefined') {
+            return !!(activeGameGeminiComments[idx] !== undefined);
+        }
+        return false;
+    }
     
     for (let i = 0; i < movesToDisplay.length; i += 2) {
         const row = document.createElement('div');
@@ -423,27 +447,45 @@ function updateMoveHistory() {
         const num = document.createElement('span');
         num.className = 'text-gray-500 w-8 font-bold';
         num.innerText = `${Math.floor(i/2) + 1}.`;
-        
+
+        // White move cell
         const wMove = document.createElement('span');
-        wMove.className = 'w-20 cursor-pointer rounded px-1.5 py-0.5 transition-colors';
-        wMove.innerText = movesToDisplay[i];
+        wMove.className = 'w-20 cursor-pointer rounded px-1.5 py-0.5 transition-colors flex items-center gap-1';
+        const wText = document.createElement('span');
+        wText.innerText = movesToDisplay[i];
+        wMove.appendChild(wText);
+        if (hasAIComment(i)) {
+            const badge = document.createElement('i');
+            badge.className = 'fas fa-brain text-purple-400 text-[8px] opacity-90 flex-shrink-0';
+            badge.title = 'Tiene análisis IA guardado';
+            wMove.appendChild(badge);
+        }
         if (i === highlightIndex) {
-            wMove.className += ' bg-blue-500/40 text-blue-300 font-bold border border-blue-500/30';
+            wMove.classList.add('bg-blue-500/40', 'text-blue-300', 'font-bold', 'border', 'border-blue-500/30');
         } else {
-            wMove.className += ' text-white hover:bg-slate-700';
+            wMove.classList.add('text-white', 'hover:bg-slate-700');
         }
         if (reviewMode) {
             wMove.addEventListener('click', () => setReviewMoveIndex(i));
         }
-        
+
+        // Black move cell
         const bMove = document.createElement('span');
-        bMove.className = 'w-20 text-right cursor-pointer rounded px-1.5 py-0.5 transition-colors';
-        bMove.innerText = movesToDisplay[i+1] ? movesToDisplay[i+1] : '';
+        bMove.className = 'w-20 text-right cursor-pointer rounded px-1.5 py-0.5 transition-colors flex items-center justify-end gap-1';
         if (movesToDisplay[i+1]) {
+            if (hasAIComment(i + 1)) {
+                const badge = document.createElement('i');
+                badge.className = 'fas fa-brain text-purple-400 text-[8px] opacity-90 flex-shrink-0';
+                badge.title = 'Tiene análisis IA guardado';
+                bMove.appendChild(badge);
+            }
+            const bText = document.createElement('span');
+            bText.innerText = movesToDisplay[i+1];
+            bMove.appendChild(bText);
             if (i + 1 === highlightIndex) {
-                bMove.className += ' bg-blue-500/40 text-blue-300 font-bold border border-blue-500/30';
+                bMove.classList.add('bg-blue-500/40', 'text-blue-300', 'font-bold', 'border', 'border-blue-500/30');
             } else {
-                bMove.className += ' text-white hover:bg-slate-700';
+                bMove.classList.add('text-white', 'hover:bg-slate-700');
             }
             if (reviewMode) {
                 bMove.addEventListener('click', () => setReviewMoveIndex(i+1));
@@ -614,6 +656,11 @@ window.onload = function() {
     
     // Cargar el historial en la UI al iniciar
     renderHistoryList();
+    
+    // Inicializar Gemini
+    if (typeof initGemini === 'function') {
+        initGemini();
+    }
     
     renderBoard();
 };

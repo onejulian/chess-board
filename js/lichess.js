@@ -456,6 +456,10 @@ function saveGameToHistory(winner, status) {
         return;
     }
 
+    const saveCheckbox = document.getElementById('gemini-save-option');
+    const isSaveChecked = saveCheckbox ? saveCheckbox.checked : false;
+    const commentsToSave = isSaveChecked ? { ...activeGameGeminiComments } : {};
+
     const gameData = {
         id: lichessGameId,
         date: Date.now(),
@@ -465,11 +469,15 @@ function saveGameToHistory(winner, status) {
         status: status,
         userColor: userColor,
         moves: game.history(),
-        pgn: game.pgn()
+        pgn: game.pgn(),
+        geminiComments: commentsToSave
     };
 
     history.unshift(gameData); // Agregar al inicio (más reciente primero)
     localStorage.setItem('chess_bot_history', JSON.stringify(history));
+
+    // Limpiar comentarios temporales de la partida activa
+    activeGameGeminiComments = {};
 
     // Refrescar UI del historial si existe la función
     if (typeof renderHistoryList === 'function') {

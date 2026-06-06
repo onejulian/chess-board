@@ -124,3 +124,75 @@ body {
 .hover\:bg-slate-705:hover {
     background-color: #273549 !important;
 }
+
+/* Estilos premium para el markdown de Gemini */
+#gemini-response h1, 
+#gemini-response h2, 
+#gemini-response h3 {
+    font-weight: 700;
+    color: #60a5fa; /* Blue-400 equivalent */
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 0.25rem;
+}
+#gemini-response h1 { font-size: 1.25rem; }
+#gemini-response h2 { font-size: 1.1rem; }
+#gemini-response h3 { font-size: 1rem; }
+#gemini-response p {
+    margin-bottom: 0.75rem;
+    line-height: 1.6;
+    color: #cbd5e1; /* Slate-300 */
+}
+#gemini-response code {
+    background-color: #0f172a;
+    color: #fb7185; /* Rose-400 accent */
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.825rem;
+}
+#gemini-response pre {
+    background-color: #020617; /* Very dark slate */
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin-bottom: 0.75rem;
+    border: 1px solid #1e293b;
+}
+#gemini-response pre code {
+    background-color: transparent;
+    color: #38bdf8; /* Sky-400 */
+    padding: 0;
+    font-size: 0.8rem;
+}
+#gemini-response ul, 
+#gemini-response ol {
+    margin-bottom: 0.75rem;
+    padding-left: 1.25rem;
+}
+#gemini-response ul {
+    list-style-type: disc;
+}
+#gemini-response ol {
+    list-style-type: decimal;
+}
+#gemini-response li {
+    margin-bottom: 0.25rem;
+    line-height: 1.5;
+    color: #e2e8f0; /* Slate-200 */
+}
+#gemini-response blockquote {
+    border-left: 4px solid #3b82f6;
+    padding-left: 0.75rem;
+    color: #94a3b8;
+    font-style: italic;
+    margin-bottom: 0.75rem;
+}
+#gemini-response strong {
+    color: #38bdf8; /* Sky-400 */
+}
+#gemini-response::-webkit-scrollbar { width: 6px; }
+#gemini-response::-webkit-scrollbar-track { background: #1e293b; }
+#gemini-response::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+
