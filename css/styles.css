@@ -109,3 +109,18 @@ body {
     filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.8)) drop-shadow(0 0 4px rgba(59, 130, 246, 0.4));
     scale: 1.15;
 }
+
+/* Ocultar barra de scroll en el historial de partidas guardadas */
+#history-list::-webkit-scrollbar { width: 6px; }
+#history-list::-webkit-scrollbar-track { background: #1e293b; }
+#history-list::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+
+/* Deshabilitar cursor del tablero en modo repaso o cuando no es el turno */
+.board-disabled .square {
+    cursor: default !important;
+}
+
+/* Color personalizado de hover */
+.hover\:bg-slate-705:hover {
+    background-color: #273549 !important;
+}

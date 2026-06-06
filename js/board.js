@@ -17,21 +17,36 @@ function flipBoard() {
 function switchTab(tab) {
     const analysisBtn = document.getElementById('tab-analysis-btn');
     const lichessBtn = document.getElementById('tab-lichess-btn');
+    const historyBtn = document.getElementById('tab-history-btn');
     const analysisContent = document.getElementById('tab-analysis');
     const lichessContent = document.getElementById('tab-lichess');
+    const historyContent = document.getElementById('tab-history');
+
+    // Clases base desactivadas y activadas
+    const inactiveClass = "flex-1 pb-2 font-bold text-xs sm:text-sm text-gray-400 border-b-2 border-transparent hover:text-white transition-colors";
+    const activeClass = "flex-1 pb-2 font-bold text-xs sm:text-sm text-blue-400 border-b-2 border-blue-500 transition-colors";
+
+    analysisBtn.className = inactiveClass;
+    lichessBtn.className = inactiveClass;
+    historyBtn.className = inactiveClass;
+
+    analysisContent.classList.add('hidden');
+    lichessContent.classList.add('hidden');
+    historyContent.classList.add('hidden');
 
     if (tab === 'analysis') {
-        analysisBtn.className = "flex-1 pb-2 font-bold text-sm text-blue-400 border-b-2 border-blue-500 transition-colors";
-        lichessBtn.className = "flex-1 pb-2 font-bold text-sm text-gray-400 border-b-2 border-transparent hover:text-white transition-colors";
+        analysisBtn.className = activeClass;
         analysisContent.classList.remove('hidden');
-        lichessContent.classList.add('hidden');
-    } else {
-        lichessBtn.className = "flex-1 pb-2 font-bold text-sm text-blue-400 border-b-2 border-blue-500 transition-colors";
-        analysisBtn.className = "flex-1 pb-2 font-bold text-sm text-gray-400 border-b-2 border-transparent hover:text-white transition-colors";
+    } else if (tab === 'lichess') {
+        lichessBtn.className = activeClass;
         lichessContent.classList.remove('hidden');
-        analysisContent.classList.add('hidden');
+    } else if (tab === 'history') {
+        historyBtn.className = activeClass;
+        historyContent.classList.remove('hidden');
+        renderHistoryList();
     }
 }
+
 
 function toggleAnalysis(checked) {
     analysisEnabled = checked;
@@ -39,6 +54,12 @@ function toggleAnalysis(checked) {
 }
 
 function renderBoard() {
+    if (reviewMode || (lichessGameActive && game.turn() !== userColor)) {
+        boardEl.classList.add('board-disabled');
+    } else {
+        boardEl.classList.remove('board-disabled');
+    }
+
     boardEl.innerHTML = '';
     const board = game.board(); // Matriz 8x8 del estado actual
     
@@ -305,6 +326,7 @@ function redrawGoldArrowsOnly() {
 }
 
 function handleSquareClick(squareId) {
+    if (reviewMode) return; // Deshabilitar jugadas en modo repaso
     if (game.game_over()) return;
 
     // Restricción si partida activa de Lichess
@@ -379,11 +401,22 @@ function updateStatus() {
 }
 
 function updateMoveHistory() {
-    const history = game.history();
     const listEl = document.getElementById('move-list');
+    if (!listEl) return;
     listEl.innerHTML = '';
     
-    for (let i = 0; i < history.length; i += 2) {
+    let movesToDisplay = [];
+    let highlightIndex = -1;
+    
+    if (reviewMode && reviewGame) {
+        movesToDisplay = reviewGame.moves;
+        highlightIndex = reviewIndex;
+    } else {
+        movesToDisplay = game.history();
+        highlightIndex = movesToDisplay.length - 1;
+    }
+    
+    for (let i = 0; i < movesToDisplay.length; i += 2) {
         const row = document.createElement('div');
         row.className = 'flex justify-between items-center px-2 py-1.5 border-b border-slate-700/50 hover:bg-slate-800 transition-colors';
         
@@ -392,19 +425,44 @@ function updateMoveHistory() {
         num.innerText = `${Math.floor(i/2) + 1}.`;
         
         const wMove = document.createElement('span');
-        wMove.className = 'text-white w-20';
-        wMove.innerText = history[i];
-
+        wMove.className = 'w-20 cursor-pointer rounded px-1.5 py-0.5 transition-colors';
+        wMove.innerText = movesToDisplay[i];
+        if (i === highlightIndex) {
+            wMove.className += ' bg-blue-500/40 text-blue-300 font-bold border border-blue-500/30';
+        } else {
+            wMove.className += ' text-white hover:bg-slate-700';
+        }
+        if (reviewMode) {
+            wMove.addEventListener('click', () => setReviewMoveIndex(i));
+        }
+        
         const bMove = document.createElement('span');
-        bMove.className = 'text-white w-20 text-right';
-        bMove.innerText = history[i+1] ? history[i+1] : '';
-
+        bMove.className = 'w-20 text-right cursor-pointer rounded px-1.5 py-0.5 transition-colors';
+        bMove.innerText = movesToDisplay[i+1] ? movesToDisplay[i+1] : '';
+        if (movesToDisplay[i+1]) {
+            if (i + 1 === highlightIndex) {
+                bMove.className += ' bg-blue-500/40 text-blue-300 font-bold border border-blue-500/30';
+            } else {
+                bMove.className += ' text-white hover:bg-slate-700';
+            }
+            if (reviewMode) {
+                bMove.addEventListener('click', () => setReviewMoveIndex(i+1));
+            }
+        }
+        
         row.appendChild(num);
         row.appendChild(wMove);
         row.appendChild(bMove);
         listEl.appendChild(row);
     }
-    listEl.scrollTop = listEl.scrollHeight;
+    
+    // Auto-scroll logic
+    const activeEl = listEl.querySelector('.bg-blue-500\\/40');
+    if (activeEl) {
+        activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } else {
+        listEl.scrollTop = listEl.scrollHeight;
+    }
 }
 
 function undoMove() {
@@ -553,5 +611,224 @@ window.onload = function() {
         document.getElementById('lichess-token-input').value = savedToken;
         lichessToken = savedToken;
     }
+    
+    // Cargar el historial en la UI al iniciar
+    renderHistoryList();
+    
     renderBoard();
 };
+
+// --- LOGICA DE HISTORIAL Y REPASO ---
+
+// Renderizar la lista de partidas del historial
+function renderHistoryList() {
+    const listEl = document.getElementById('history-list');
+    if (!listEl) return;
+    
+    const history = JSON.parse(localStorage.getItem('chess_bot_history') || '[]');
+    listEl.innerHTML = '';
+    
+    if (history.length === 0) {
+        listEl.innerHTML = `
+            <div class="text-center py-12 text-gray-500 text-sm flex flex-col items-center justify-center gap-2">
+                <i class="fas fa-history text-4xl opacity-30"></i>
+                <span>No hay partidas completadas en el historial.</span>
+            </div>
+        `;
+        return;
+    }
+    
+    history.forEach(g => {
+        const dateStr = new Date(g.date).toLocaleString('es-ES', {
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        let resultText = '';
+        let badgeClass = '';
+        
+        if (g.result === '1/2-1/2') {
+            resultText = 'Tablas';
+            badgeClass = 'bg-slate-700 text-slate-300 border border-slate-600';
+        } else {
+            const userWon = (g.userColor === 'w' && g.result === '1-0') || (g.userColor === 'b' && g.result === '0-1');
+            if (userWon) {
+                resultText = 'Victoria';
+                badgeClass = 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/80';
+            } else {
+                resultText = 'Derrota';
+                badgeClass = 'bg-red-950/80 text-red-400 border border-red-800/80';
+            }
+        }
+        
+        const card = document.createElement('div');
+        card.className = 'bg-slate-900/60 border border-slate-700/50 rounded-xl p-3.5 flex flex-col gap-2.5 hover:border-slate-600 transition-all duration-200';
+        
+        card.innerHTML = `
+            <div class="flex justify-between items-center text-[10px] sm:text-xs">
+                <span class="text-slate-400 font-medium">${dateStr}</span>
+                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${badgeClass}">
+                    ${resultText}
+                </span>
+            </div>
+            <div class="flex flex-col gap-1.5 py-1">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-sm bg-white border border-slate-300 flex-shrink-0"></span>
+                    <span class="text-xs sm:text-sm font-semibold text-white truncate ${g.userColor === 'w' ? 'text-blue-300 font-bold' : ''}">${g.white}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-sm bg-slate-950 border border-slate-800 flex-shrink-0"></span>
+                    <span class="text-xs sm:text-sm font-semibold text-white truncate ${g.userColor === 'b' ? 'text-blue-300 font-bold' : ''}">${g.black}</span>
+                </div>
+            </div>
+            <div class="flex gap-2 mt-1 pt-2 border-t border-slate-800/50">
+                <button onclick="startReviewGame('${g.id}')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white transition-colors py-1.5 px-3 rounded-lg text-xs font-bold flex justify-center items-center gap-1.5 shadow">
+                    <i class="fas fa-play text-[8px]"></i> Repasar
+                </button>
+                <a href="https://lichess.org/${g.id}" target="_blank" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-blue-300 hover:text-white transition-colors py-1.5 px-2.5 rounded-lg text-xs font-bold flex justify-center items-center gap-1.5 shadow" title="Ver en Lichess">
+                    <i class="fas fa-external-link-alt text-[9px]"></i>
+                </a>
+                <button onclick="deleteGameFromHistory('${g.id}')" class="bg-red-950/40 hover:bg-red-900 border border-red-900/30 text-red-400 hover:text-white transition-colors py-1.5 px-2.5 rounded-lg text-xs font-bold flex justify-center items-center" title="Borrar del historial">
+                    <i class="fas fa-trash-alt text-[9px]"></i>
+                </button>
+            </div>
+        `;
+        listEl.appendChild(card);
+    });
+}
+
+// Eliminar una partida del historial
+function deleteGameFromHistory(id) {
+    if (!confirm("¿Estás seguro de que deseas eliminar esta partida del historial?")) return;
+    
+    let history = JSON.parse(localStorage.getItem('chess_bot_history') || '[]');
+    history = history.filter(g => g.id !== id);
+    localStorage.setItem('chess_bot_history', JSON.stringify(history));
+    
+    renderHistoryList();
+}
+
+// Vaciar el historial completo
+function clearAllHistory() {
+    if (!confirm("¿Estás seguro de que deseas borrar TODO el historial de partidas? Esta acción no se puede deshacer.")) return;
+    
+    localStorage.removeItem('chess_bot_history');
+    renderHistoryList();
+}
+
+// Iniciar el modo repaso para una partida
+function startReviewGame(id) {
+    const history = JSON.parse(localStorage.getItem('chess_bot_history') || '[]');
+    const gameData = history.find(g => g.id === id);
+    if (!gameData) return;
+    
+    // Configurar estado de repaso
+    reviewMode = true;
+    reviewGame = gameData;
+    reviewMoves = gameData.moves;
+    reviewIndex = reviewMoves.length - 1; // Empezar en la última jugada
+    userColor = gameData.userColor;
+    isFlipped = (userColor === 'b');
+    
+    // Cargar posición final en el motor chess.js
+    game.reset();
+    for (let i = 0; i <= reviewIndex; i++) {
+        game.move(reviewMoves[i]);
+    }
+    
+    // Cambiar a la pestaña de análisis
+    switchTab('analysis');
+    
+    // Mostrar controles de repaso y ocultar los de análisis
+    document.getElementById('analysis-controls').classList.add('hidden');
+    const reviewCtrl = document.getElementById('review-controls');
+    reviewCtrl.classList.remove('hidden');
+    
+    // Actualizar texto del progreso
+    const progressEl = document.getElementById('review-progress');
+    if (progressEl) {
+        progressEl.innerText = `${reviewIndex + 1} / ${reviewMoves.length}`;
+    }
+    
+    selectedSquare = null;
+    renderBoard();
+}
+
+// Cambiar el índice de movimiento en el repaso
+function setReviewMoveIndex(index) {
+    if (!reviewMode) return;
+    
+    reviewIndex = index;
+    game.reset();
+    for (let i = 0; i <= reviewIndex; i++) {
+        game.move(reviewMoves[i]);
+    }
+    
+    // Actualizar progreso
+    const progressEl = document.getElementById('review-progress');
+    if (progressEl) {
+        progressEl.innerText = `${reviewIndex + 1} / ${reviewMoves.length}`;
+    }
+    
+    selectedSquare = null;
+    renderBoard();
+}
+
+// Retroceder un movimiento
+function prevReviewMove() {
+    if (!reviewMode) return;
+    if (reviewIndex >= 0) {
+        setReviewMoveIndex(reviewIndex - 1);
+    }
+}
+
+// Avanzar un movimiento
+function nextReviewMove() {
+    if (!reviewMode) return;
+    if (reviewIndex < reviewMoves.length - 1) {
+        setReviewMoveIndex(reviewIndex + 1);
+    }
+}
+
+// Salir del modo repaso
+function exitReviewMode() {
+    reviewMode = false;
+    reviewGame = null;
+    reviewMoves = [];
+    reviewIndex = -1;
+    
+    document.getElementById('review-controls').classList.add('hidden');
+    document.getElementById('analysis-controls').classList.remove('hidden');
+    
+    game.reset();
+    selectedSquare = null;
+    renderBoard();
+}
+
+// Desviar el análisis a partir de la posición actual del repaso
+function forkAnalysis() {
+    reviewMode = false;
+    reviewGame = null;
+    reviewMoves = [];
+    reviewIndex = -1;
+    
+    document.getElementById('review-controls').classList.add('hidden');
+    document.getElementById('analysis-controls').classList.remove('hidden');
+    
+    renderBoard();
+    alert("Has salido del modo repaso. El tablero se ha mantenido en esta posición para que puedas analizar variantes libremente realizando jugadas manuales.");
+}
+
+// Navegación por teclado (Flechas izquierda y derecha)
+window.addEventListener('keydown', function(e) {
+    if (!reviewMode) return;
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevReviewMove();
+    } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        nextReviewMove();
+    }
+});

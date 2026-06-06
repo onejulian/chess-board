@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,51 +10,63 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
 </head>
+
 <body class="min-h-screen p-3 sm:p-6 md:p-8 flex flex-col justify-start lg:justify-center items-center">
 
     <div class="max-w-6xl w-full flex flex-col lg:flex-row gap-6 lg:gap-8 items-stretch lg:items-start">
-        
+
         <!-- Contenedor del Tablero -->
         <div class="w-full lg:w-2/3 flex flex-col items-center">
             <div class="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-                <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center gap-2 w-full sm:w-auto">
+                <h1
+                    class="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center gap-2 w-full sm:w-auto">
                     <i class="fas fa-chess-knight text-blue-400"></i> Tablero de Análisis
                 </h1>
                 <div class="flex gap-2 items-center w-full sm:w-auto justify-between sm:justify-end">
-                    <button onclick="flipBoard()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors px-3 py-1.5 rounded-lg text-sm font-semibold text-blue-300 flex items-center gap-1.5 shadow">
+                    <button onclick="flipBoard()"
+                        class="bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors px-3 py-1.5 rounded-lg text-sm font-semibold text-blue-300 flex items-center gap-1.5 shadow">
                         <i class="fas fa-retweet"></i> Voltear
                     </button>
-                    <span id="turn-indicator" class="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-900 shadow">
+                    <span id="turn-indicator"
+                        class="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-900 shadow">
                         Juegan Blancas
                     </span>
                 </div>
             </div>
-            
+
             <div id="board-container">
                 <div id="board" class="board"></div>
-                
-                <svg id="arrows-svg" class="absolute top-0 left-0 w-full h-full pointer-events-none z-20" viewBox="0 0 8 8">
+
+                <svg id="arrows-svg" class="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
+                    viewBox="0 0 8 8">
                     <defs id="arrow-defs">
                     </defs>
                 </svg>
             </div>
-            
+
             <p class="text-gray-400 text-xs sm:text-sm mt-4 text-center">
-                <i class="fas fa-info-circle mr-1"></i> Se muestran todas las jugadas posibles. 
+                <i class="fas fa-info-circle mr-1"></i> Se muestran todas las jugadas posibles.
                 Las capturas se resaltan en <span class="text-red-400 font-bold">rojo</span>.
             </p>
         </div>
 
         <!-- Panel Lateral: Estado, Historial y Controles -->
-        <div class="w-full lg:w-1/3 bg-slate-800 rounded-xl p-4 sm:p-6 shadow-xl flex flex-col min-h-[420px] sm:min-h-[500px] lg:h-[650px]">
-            
+        <div
+            class="w-full lg:w-1/3 bg-slate-800 rounded-xl p-4 sm:p-6 shadow-xl flex flex-col min-h-[420px] sm:min-h-[500px] lg:h-[650px]">
+
             <!-- Tabs Headers -->
             <div class="flex border-b border-slate-700 mb-4">
-                <button id="tab-analysis-btn" onclick="switchTab('analysis')" class="flex-1 pb-2 font-bold text-sm text-blue-400 border-b-2 border-blue-500 transition-colors">
+                <button id="tab-analysis-btn" onclick="switchTab('analysis')"
+                    class="flex-1 pb-2 font-bold text-xs sm:text-sm text-blue-400 border-b-2 border-blue-500 transition-colors">
                     <i class="fas fa-search mr-1"></i> Análisis
                 </button>
-                <button id="tab-lichess-btn" onclick="switchTab('lichess')" class="flex-1 pb-2 font-bold text-sm text-gray-400 border-b-2 border-transparent hover:text-white transition-colors">
+                <button id="tab-lichess-btn" onclick="switchTab('lichess')"
+                    class="flex-1 pb-2 font-bold text-xs sm:text-sm text-gray-400 border-b-2 border-transparent hover:text-white transition-colors">
                     <i class="fas fa-robot mr-1"></i> Lichess Bot
+                </button>
+                <button id="tab-history-btn" onclick="switchTab('history')"
+                    class="flex-1 pb-2 font-bold text-xs sm:text-sm text-gray-400 border-b-2 border-transparent hover:text-white transition-colors">
+                    <i class="fas fa-history mr-1"></i> Historial
                 </button>
             </div>
 
@@ -63,40 +76,93 @@
                     <span>Estado de Partida</span>
                     <!-- Real-time analysis toggle -->
                     <label class="relative inline-flex items-center cursor-pointer scale-90">
-                        <input type="checkbox" id="analysis-toggle" onchange="toggleAnalysis(this.checked)" class="sr-only peer" checked>
-                        <div class="w-9 h-5 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                        <input type="checkbox" id="analysis-toggle" onchange="toggleAnalysis(this.checked)"
+                            class="sr-only peer">
+                        <div
+                            class="w-9 h-5 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500">
+                        </div>
                         <span class="ml-2 text-xs font-semibold text-amber-400 flex items-center gap-1">
                             <i class="fas fa-lightbulb animate-pulse"></i> Sugerencias Oro
                         </span>
                     </label>
                 </h2>
-                
+
                 <div id="status" class="text-base mb-4 font-medium text-blue-300 min-h-[2.5rem]">
                     Partida iniciada.
                 </div>
 
                 <h3 class="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Historial de Jugadas</h3>
-                <div id="move-list" class="flex-1 bg-slate-900 rounded-lg p-3 overflow-y-auto mb-4 flex flex-col gap-1 text-sm font-mono border border-slate-700 min-h-[150px]">
+                <div id="move-list"
+                    class="flex-1 bg-slate-900 rounded-lg p-3 overflow-y-auto mb-4 flex flex-col gap-1 text-sm font-mono border border-slate-700 min-h-[150px]">
                     <!-- Los movimientos se inyectarán aquí -->
                 </div>
 
                 <!-- Controles de Análisis -->
-                <div class="flex flex-col gap-2 mt-auto">
+                <div id="analysis-controls" class="flex flex-col gap-2 mt-auto">
                     <div class="flex gap-2">
-                        <button onclick="undoMove()" class="flex-1 bg-slate-700 hover:bg-slate-600 transition-colors p-2 rounded text-sm font-semibold">
+                        <button onclick="undoMove()"
+                            class="flex-1 bg-slate-700 hover:bg-slate-600 transition-colors p-2 rounded text-sm font-semibold">
                             <i class="fas fa-undo mr-1"></i> Deshacer
                         </button>
-                        <button onclick="resetBoard()" class="flex-1 bg-slate-700 hover:bg-slate-600 transition-colors p-2 rounded text-sm font-semibold text-red-300">
+                        <button onclick="resetBoard()"
+                            class="flex-1 bg-slate-700 hover:bg-slate-600 transition-colors p-2 rounded text-sm font-semibold text-red-300">
                             <i class="fas fa-trash mr-1"></i> Reiniciar
                         </button>
                     </div>
-                    
+
                     <div class="flex gap-2">
-                        <button onclick="exportPGN()" class="flex-1 bg-blue-600 hover:bg-blue-500 transition-colors p-2.5 rounded-lg text-xs sm:text-sm font-bold flex justify-center items-center gap-1.5 shadow-lg">
+                        <button onclick="exportPGN()"
+                            class="flex-1 bg-blue-600 hover:bg-blue-500 transition-colors p-2.5 rounded-lg text-xs sm:text-sm font-bold flex justify-center items-center gap-1.5 shadow-lg">
                             <i class="fas fa-download"></i> Exportar PGN
                         </button>
-                        <button id="copy-pgn-btn" onclick="copyPGN()" class="flex-1 bg-slate-700 hover:bg-slate-600 transition-colors p-2.5 rounded-lg text-xs sm:text-sm font-bold flex justify-center items-center gap-1.5 shadow-lg border border-slate-600 text-blue-300">
+                        <button id="copy-pgn-btn" onclick="copyPGN()"
+                            class="flex-1 bg-slate-700 hover:bg-slate-600 transition-colors p-2.5 rounded-lg text-xs sm:text-sm font-bold flex justify-center items-center gap-1.5 shadow-lg border border-slate-600 text-blue-300">
                             <i id="copy-icon" class="fas fa-copy"></i> <span id="copy-text">Copiar PGN</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Controles de Repaso (Modo Historial) -->
+                <div id="review-controls"
+                    class="hidden flex flex-col gap-3 mt-auto bg-slate-900/40 p-3 rounded-lg border border-slate-700/50">
+                    <div class="text-xs text-amber-400 font-semibold flex justify-between items-center">
+                        <span><i class="fas fa-history mr-1"></i> MODO REPASO</span>
+                        <span id="review-progress"
+                            class="font-mono bg-slate-800 px-2 py-0.5 rounded border border-slate-700">0 / 0</span>
+                    </div>
+
+                    <!-- Botones de Navegación -->
+                    <div class="flex justify-between gap-1">
+                        <button onclick="setReviewMoveIndex(-1)"
+                            class="flex-1 bg-slate-800 hover:bg-slate-705 text-white transition-colors py-2 rounded font-semibold text-sm border border-slate-700/80 flex justify-center items-center"
+                            title="Inicio">
+                            <i class="fas fa-fast-backward"></i>
+                        </button>
+                        <button onclick="prevReviewMove()"
+                            class="flex-1 bg-slate-800 hover:bg-slate-705 text-white transition-colors py-2 rounded font-semibold text-sm border border-slate-700/80 flex justify-center items-center"
+                            title="Anterior">
+                            <i class="fas fa-backward"></i>
+                        </button>
+                        <button onclick="nextReviewMove()"
+                            class="flex-1 bg-slate-800 hover:bg-slate-705 text-white transition-colors py-2 rounded font-semibold text-sm border border-slate-700/80 flex justify-center items-center"
+                            title="Siguiente">
+                            <i class="fas fa-forward"></i>
+                        </button>
+                        <button onclick="setReviewMoveIndex(reviewMoves.length - 1)"
+                            class="flex-1 bg-slate-800 hover:bg-slate-705 text-white transition-colors py-2 rounded font-semibold text-sm border border-slate-700/80 flex justify-center items-center"
+                            title="Final">
+                            <i class="fas fa-fast-forward"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button onclick="exitReviewMode()"
+                            class="flex-1 bg-slate-700 hover:bg-slate-600 transition-colors p-2 rounded text-xs font-bold text-gray-300">
+                            <i class="fas fa-times-circle mr-1"></i> Salir
+                        </button>
+                        <button onclick="forkAnalysis()"
+                            class="flex-1 bg-blue-600 hover:bg-blue-500 transition-colors p-2 rounded text-xs font-bold text-white shadow">
+                            <i class="fas fa-code-branch mr-1"></i> Analizar Variantes
                         </button>
                     </div>
                 </div>
@@ -111,14 +177,19 @@
                             Lichess Personal Token
                         </label>
                         <div class="relative">
-                            <input type="password" id="lichess-token-input" oninput="handleTokenInput(this.value)" placeholder="lip_..." class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white pr-10 focus:outline-none focus:border-blue-500">
-                            <button onclick="toggleTokenVisibility()" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-white">
+                            <input type="password" id="lichess-token-input" oninput="handleTokenInput(this.value)"
+                                placeholder="lip_..."
+                                class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white pr-10 focus:outline-none focus:border-blue-500">
+                            <button onclick="toggleTokenVisibility()"
+                                class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-white">
                                 <i id="token-eye-icon" class="fas fa-eye"></i>
                             </button>
                         </div>
                         <p class="text-[10px] text-gray-400 mt-1">
-                            Necesita permisos: <code class="text-blue-300 bg-slate-900 px-1 rounded">board:play</code> y <code class="text-blue-300 bg-slate-900 px-1 rounded">challenge:write</code>.
-                            <a href="https://lichess.org/account/oauth/token" target="_blank" class="text-blue-400 hover:underline inline-flex items-center gap-0.5 ml-1">
+                            Necesita permisos: <code class="text-blue-300 bg-slate-900 px-1 rounded">board:play</code> y
+                            <code class="text-blue-300 bg-slate-900 px-1 rounded">challenge:write</code>.
+                            <a href="https://lichess.org/account/oauth/token" target="_blank"
+                                class="text-blue-400 hover:underline inline-flex items-center gap-0.5 ml-1">
                                 Crear uno <i class="fas fa-external-link-alt text-[8px]"></i>
                             </a>
                         </p>
@@ -129,7 +200,8 @@
                             <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
                                 Dificultad (1-8)
                             </label>
-                            <select id="lichess-level-select" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                            <select id="lichess-level-select"
+                                class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
                                 <option value="1" selected>Nivel 1 (Stockfish 800)</option>
                                 <option value="2">Nivel 2 (Stockfish 1100)</option>
                                 <option value="3">Nivel 3 (Stockfish 1400)</option>
@@ -145,7 +217,8 @@
                             <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
                                 Jugar como
                             </label>
-                            <select id="lichess-color-select" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                            <select id="lichess-color-select"
+                                class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
                                 <option value="white">Blancas (White)</option>
                                 <option value="black">Negras (Black)</option>
                                 <option value="random" selected>Aleatorio (Random)</option>
@@ -157,7 +230,8 @@
                         <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
                             Tiempo de Partida
                         </label>
-                        <select id="lichess-time-select" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <select id="lichess-time-select"
+                            class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
                             <option value="unlimited" selected>Sin límite de tiempo</option>
                             <option value="300,5">5 min + 5 seg (Blitz)</option>
                             <option value="600,5">10 min + 5 seg (Rapid)</option>
@@ -166,7 +240,8 @@
                         </select>
                     </div>
 
-                    <button onclick="startLichessGame()" id="start-game-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 transition-colors p-3 rounded-lg font-bold flex justify-center items-center gap-2 shadow-lg mt-2">
+                    <button onclick="startLichessGame()" id="start-game-btn"
+                        class="w-full bg-emerald-600 hover:bg-emerald-500 transition-colors p-3 rounded-lg font-bold flex justify-center items-center gap-2 shadow-lg mt-2">
                         <i class="fas fa-play-circle text-lg"></i> Iniciar Partida contra Bot
                     </button>
                 </div>
@@ -175,36 +250,56 @@
                 <div id="lichess-active-panel" class="hidden flex flex-col gap-4 flex-1">
                     <div class="bg-slate-900 border border-slate-700 rounded-lg p-4 flex flex-col gap-3">
                         <div class="flex justify-between items-center">
-                            <span id="lichess-game-badge" class="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                            <span id="lichess-game-badge"
+                                class="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
                                 <span id="lichess-badge-pulse" class="relative flex h-2 w-2">
-                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span
+                                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                     <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                 </span>
                                 <span id="lichess-badge-text">Partida Activa</span>
                             </span>
-                            <a id="lichess-game-link" href="#" target="_blank" class="text-xs text-blue-400 hover:underline flex items-center gap-1">
+                            <a id="lichess-game-link" href="#" target="_blank"
+                                class="text-xs text-blue-400 hover:underline flex items-center gap-1">
                                 Ver en Lichess <i class="fas fa-external-link-alt text-[10px]"></i>
                             </a>
                         </div>
-                        
-                        <div id="lichess-players" class="text-base font-bold text-white border-t border-slate-800 pt-2 text-center">
+
+                        <div id="lichess-players"
+                            class="text-base font-bold text-white border-t border-slate-800 pt-2 text-center">
                             Tú vs Stockfish Bot
                         </div>
 
-                        <div id="lichess-game-status" class="text-sm font-medium text-center text-slate-300 py-1 bg-slate-800/50 rounded border border-slate-800">
+                        <div id="lichess-game-status"
+                            class="text-sm font-medium text-center text-slate-300 py-1 bg-slate-800/50 rounded border border-slate-800">
                             Esperando...
                         </div>
                     </div>
 
                     <div class="mt-auto flex flex-col gap-2">
-                        <button id="lichess-resign-btn" onclick="resignLichessGame()" class="w-full bg-red-900/80 hover:bg-red-900 transition-colors p-2.5 rounded-lg text-sm font-bold flex justify-center items-center gap-2 border border-red-700">
+                        <button id="lichess-resign-btn" onclick="resignLichessGame()"
+                            class="w-full bg-red-900/80 hover:bg-red-900 transition-colors p-2.5 rounded-lg text-sm font-bold flex justify-center items-center gap-2 border border-red-700">
                             <i class="fas fa-flag"></i> Rendirse / Cancelar Partida
                         </button>
-                        <button id="lichess-new-game-btn" onclick="stopLichessSession()" class="hidden w-full bg-emerald-600 hover:bg-emerald-500 transition-colors p-2.5 rounded-lg text-sm font-bold flex justify-center items-center gap-2 shadow-lg">
+                        <button id="lichess-new-game-btn" onclick="stopLichessSession()"
+                            class="hidden w-full bg-emerald-600 hover:bg-emerald-500 transition-colors p-2.5 rounded-lg text-sm font-bold flex justify-center items-center gap-2 shadow-lg">
                             <i class="fas fa-arrow-left"></i> Volver a Configurar / Nueva Partida
                         </button>
                     </div>
                 </div>
+            </div>
+
+            <!-- Tab Content: Historial -->
+            <div id="tab-history" class="hidden flex flex-col flex-1 h-full min-h-[300px]">
+                <h3 class="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Partidas Guardadas</h3>
+                <div id="history-list" class="flex-1 overflow-y-auto mb-4 flex flex-col gap-2 min-h-[150px] pr-1">
+                    <!-- Las partidas se inyectarán aquí -->
+                </div>
+                <!-- Botón para borrar todo el historial -->
+                <button onclick="clearAllHistory()"
+                    class="bg-red-900/50 hover:bg-red-900 transition-colors p-2 rounded-lg text-xs font-semibold text-red-200 mt-auto shadow border border-red-800/40">
+                    <i class="fas fa-trash-alt mr-1"></i> Borrar Todo el Historial
+                </button>
             </div>
         </div>
     </div>
@@ -215,4 +310,5 @@
     <script src="js/lichess.js"></script>
     <script src="js/board.js"></script>
 </body>
+
 </html>

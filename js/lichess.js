@@ -85,6 +85,10 @@ async function startLichessGame() {
         userColor = userColorVal;
         isFlipped = (userColor === 'b');
 
+        // Inicializar nombres de jugadores
+        lichessWhitePlayer = (userColor === 'w') ? 'Tú' : `Stockfish Nivel ${level}`;
+        lichessBlackPlayer = (userColor === 'b') ? 'Tú' : `Stockfish Nivel ${level}`;
+
         // Mostrar interfaz de juego activo
         document.getElementById('lichess-config-panel').classList.add('hidden');
         const activePanel = document.getElementById('lichess-active-panel');
@@ -294,12 +298,17 @@ function startLichessPolling(gameId) {
                     if (playersEl) {
                         playersEl.innerText = `${whiteName} vs ${blackName}`;
                     }
+
+                    // Registrar nombres de jugadores
+                    lichessWhitePlayer = data.players.white.user ? 'Tú' : `Stockfish Nivel ${data.players.white.aiLevel}`;
+                    lichessBlackPlayer = data.players.black.user ? 'Tú' : `Stockfish Nivel ${data.players.black.aiLevel}`;
                 }
 
                 const event = {
                     type: 'gameState',
                     moves: data.moves || '',
-                    status: data.status
+                    status: data.status,
+                    winner: data.winner
                 };
                 handleLichessEvent(event);
             }
@@ -313,10 +322,12 @@ function handleLichessEvent(event) {
     let movesStr = "";
     let status = "";
     let colorChanged = false;
+    let winner = undefined;
 
     if (event.type === 'gameFull') {
         movesStr = event.state.moves;
         status = event.state.status;
+        winner = event.state.winner;
 
         // Determinar el color del usuario de forma extremadamente robusta
         const whiteIsAi = !!(event.white.aiLevel || event.white.ai || (!event.white.user && !event.white.id) || (event.white.id && event.white.id.toLowerCase().includes('ai')));
@@ -345,9 +356,14 @@ function handleLichessEvent(event) {
         if (playersEl) {
             playersEl.innerText = `${whiteName} vs ${blackName}`;
         }
+
+        // Registrar nombres de jugadores
+        lichessWhitePlayer = event.white.user ? 'Tú' : `Stockfish Nivel ${event.white.aiLevel || 1}`;
+        lichessBlackPlayer = event.black.user ? 'Tú' : `Stockfish Nivel ${event.black.aiLevel || 1}`;
     } else if (event.type === 'gameState') {
         movesStr = event.moves;
         status = event.status;
+        winner = event.winner;
     } else {
         return;
     }
@@ -391,6 +407,7 @@ function handleLichessEvent(event) {
 
     // Gestionar estado
     if (status && status !== 'started') {
+        const wasActive = lichessGameActive;
         lichessGameActive = false;
         if (pollingIntervalId) clearInterval(pollingIntervalId);
         if (streamAbortController) streamAbortController.abort();
@@ -416,10 +433,46 @@ function handleLichessEvent(event) {
         const newGameBtn = document.getElementById('lichess-new-game-btn');
         if (resignBtn) resignBtn.classList.add('hidden');
         if (newGameBtn) newGameBtn.classList.remove('hidden');
+
+        // Guardar la partida en el historial
+        if (wasActive) {
+            saveGameToHistory(winner, status);
+        }
     } else {
         const isMyTurn = (game.turn() === userColor);
         document.getElementById('lichess-game-status').innerHTML = isMyTurn 
             ? `<span class="text-emerald-400 font-bold"><i class="fas fa-play animate-pulse mr-1"></i> ¡Tu turno!</span>`
             : `<span class="text-yellow-400"><i class="fas fa-spinner fa-spin mr-1"></i> Pensando Bot...</span>`;
+    }
+}
+
+function saveGameToHistory(winner, status) {
+    if (!lichessGameId) return;
+
+    let history = JSON.parse(localStorage.getItem('chess_bot_history') || '[]');
+
+    // Evitar duplicados
+    if (history.some(g => g.id === lichessGameId)) {
+        return;
+    }
+
+    const gameData = {
+        id: lichessGameId,
+        date: Date.now(),
+        white: lichessWhitePlayer || 'Blancas',
+        black: lichessBlackPlayer || 'Negras',
+        result: winner === 'white' ? '1-0' : (winner === 'black' ? '0-1' : '1/2-1/2'),
+        status: status,
+        userColor: userColor,
+        moves: game.history(),
+        pgn: game.pgn()
+    };
+
+    history.unshift(gameData); // Agregar al inicio (más reciente primero)
+    localStorage.setItem('chess_bot_history', JSON.stringify(history));
+
+    // Refrescar UI del historial si existe la función
+    if (typeof renderHistoryList === 'function') {
+        renderHistoryList();
     }
 }

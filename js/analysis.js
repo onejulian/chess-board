@@ -1,7 +1,12 @@
 function shouldShowAnalysis() {
     if (!analysisEnabled) return false;
-    if (!lichessGameActive) return false;
-    return game.turn() === userColor;
+    if (lichessGameActive) {
+        return game.turn() === userColor;
+    }
+    if (reviewMode) {
+        return true;
+    }
+    return false;
 }
 
 

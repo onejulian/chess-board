@@ -10,10 +10,18 @@ let lichessGameId = null;
 let userColor = 'w'; // 'w' o 'b'
 let botTransition = null;
 
-let analysisEnabled = true;
+let analysisEnabled = false;
 let currentGoldSuggestion = null;
 let lastAnalyzedFen = '';
 let currentAnalysisAbortController = null;
+
+// Variables de Historial y Repaso
+let reviewMode = false;
+let reviewGame = null;
+let reviewIndex = -1;
+let reviewMoves = [];
+let lichessWhitePlayer = 'Blancas';
+let lichessBlackPlayer = 'Negras';
 
 let streamAbortController = null;
 let pollingIntervalId = null;
