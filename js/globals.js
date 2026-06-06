@@ -12,6 +12,7 @@ let botTransition = null;
 let reviewTransition = null; // Para animar movimientos en modo repaso
 
 let analysisEnabled = false;
+let showAllMoves = false; // Mostrar todas las jugadas posibles (desactivado por defecto)
 let currentGoldSuggestion = null;
 let lastAnalyzedFen = '';
 let currentAnalysisAbortController = null;

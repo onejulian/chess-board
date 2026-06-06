@@ -62,6 +62,25 @@ function toggleAnalysis(checked) {
     renderBoard();
 }
 
+function toggleShowAllMoves(checked) {
+    showAllMoves = checked;
+    // Actualizar el texto informativo del tablero
+    const infoText = document.getElementById('board-info-text');
+    if (infoText) {
+        infoText.innerHTML = checked
+            ? `Se muestran todas las jugadas posibles. Las capturas se resaltan en <span class="text-red-400 font-bold">rojo</span>.`
+            : `Haz clic en una pieza para ver sus jugadas posibles. Las capturas se resaltan en <span class="text-red-400 font-bold">rojo</span>.`;
+    }
+    // Actualizar color del label del switch
+    const label = document.getElementById('show-moves-label');
+    if (label) {
+        label.className = checked
+            ? 'ml-1.5 text-xs font-semibold text-blue-400 flex items-center gap-1'
+            : 'ml-1.5 text-xs font-semibold text-slate-400 flex items-center gap-1';
+    }
+    renderBoard();
+}
+
 function renderBoard() {
     if (reviewMode || (lichessGameActive && game.turn() !== userColor)) {
         boardEl.classList.add('board-disabled');
@@ -128,7 +147,7 @@ function renderBoard() {
             }
 
             if (!selectedSquare) {
-                if (globalCaptures.has(squareId)) squareEl.classList.add('global-capture');
+                if (showAllMoves && globalCaptures.has(squareId)) squareEl.classList.add('global-capture');
             } else {
                 if (activePieceCaptures.includes(squareId)) squareEl.classList.add('global-capture');
             }
@@ -148,7 +167,15 @@ function renderBoard() {
     }
     
     // Dibujar las flechas por encima del tablero recién generado
-    drawArrows(moves);
+    if (showAllMoves) {
+        drawArrows(moves);
+    } else if (selectedSquare) {
+        // Si hay pieza seleccionada, mostrar solo sus movimientos
+        const selectedMoves = game.moves({ square: selectedSquare, verbose: true });
+        drawArrows(selectedMoves);
+    } else {
+        drawArrows([]);
+    }
 
     // Gestionar Sugerencias Oro en tiempo real de forma segura y optimizada
     if (shouldShowAnalysis()) {
