@@ -83,8 +83,8 @@ function toggleShowAllMoves(checked) {
 
 // ─── LÓGICA DE PIEZAS ELIMINADAS (CAPTURADAS) ───────────────────────────────
 
-function getCapturedPieces() {
-    const board = game.board();
+function getCapturedPieces(customBoard) {
+    const board = customBoard || game.board();
     
     // Contar las piezas que están actualmente en el tablero
     const currentCounts = {
@@ -154,8 +154,8 @@ function getCapturedPieces() {
     };
 }
 
-function updateCapturedPieces() {
-    const captured = getCapturedPieces();
+function updateCapturedPieces(customBoard) {
+    const captured = getCapturedPieces(customBoard);
     
     // Determinar quién está arriba y quién abajo según la orientación del tablero (isFlipped)
     const topColor = isFlipped ? 'w' : 'b';
@@ -245,14 +245,37 @@ function updateCapturedPieces() {
 }
 
 function renderBoard() {
-    if (reviewMode || (lichessGameActive && game.turn() !== userColor)) {
+    // Determinar el estado de juego para renderizar (usar juego temporal si se ve jugada previa)
+    let renderGame = game;
+    if (lichessGameActive && selectedMoveIndex !== -1) {
+        const tempGame = new Chess();
+        const historyVerbose = game.history({ verbose: true });
+        for (let i = 0; i <= selectedMoveIndex; i++) {
+            if (historyVerbose[i]) {
+                tempGame.move(historyVerbose[i]);
+            }
+        }
+        renderGame = tempGame;
+    }
+
+    if (reviewMode || (lichessGameActive && (selectedMoveIndex !== -1 || game.turn() !== userColor))) {
         boardEl.classList.add('board-disabled');
     } else {
         boardEl.classList.remove('board-disabled');
     }
 
+    // Mostrar/ocultar banner de vista previa de jugada anterior
+    const overlayEl = document.getElementById('past-move-overlay');
+    if (overlayEl) {
+        if (lichessGameActive && selectedMoveIndex !== -1) {
+            overlayEl.classList.remove('hidden');
+        } else {
+            overlayEl.classList.add('hidden');
+        }
+    }
+
     boardEl.innerHTML = '';
-    const board = game.board(); // Matriz 8x8 del estado actual
+    const board = renderGame.board(); // Matriz 8x8 del estado actual
     
     // Determinar el movimiento a resaltar (origen y destino)
     let highlightMove = null;
@@ -272,7 +295,7 @@ function renderBoard() {
     }
     
     // Obtener TODAS las jugadas legales del turno actual
-    const moves = game.moves({ verbose: true });
+    const moves = renderGame.moves({ verbose: true });
     
     // Mapas para saber qué casillas están atacadas globalmente (solo para el pulso rojo extra)
     const globalCaptures = new Set();
@@ -286,7 +309,7 @@ function renderBoard() {
     // Si hay una pieza seleccionada, filtramos sus capturas
     let activePieceCaptures = [];
     if (selectedSquare) {
-        const specificMoves = game.moves({ square: selectedSquare, verbose: true });
+        const specificMoves = renderGame.moves({ square: selectedSquare, verbose: true });
         specificMoves.forEach(m => {
             if (m.flags.includes('c') || m.flags.includes('e')) {
                 activePieceCaptures.push(m.to);
@@ -360,7 +383,7 @@ function renderBoard() {
         drawArrows(moves);
     } else if (selectedSquare) {
         // Si hay pieza seleccionada, mostrar solo sus movimientos
-        const selectedMoves = game.moves({ square: selectedSquare, verbose: true });
+        const selectedMoves = renderGame.moves({ square: selectedSquare, verbose: true });
         drawArrows(selectedMoves);
     } else {
         drawArrows([]);
@@ -368,7 +391,7 @@ function renderBoard() {
 
     // Gestionar Sugerencias Oro en tiempo real de forma segura y optimizada
     if (shouldShowAnalysis()) {
-        const fen = game.fen();
+        const fen = renderGame.fen();
         if (fen !== lastAnalyzedFen) {
             lastAnalyzedFen = fen;
             currentGoldSuggestion = null;
@@ -382,9 +405,9 @@ function renderBoard() {
         redrawGoldArrowsOnly();
     }
 
-    updateStatus();
+    updateStatus(renderGame);
     updateMoveHistory();
-    updateCapturedPieces();
+    updateCapturedPieces(board);
     animateBotMove();
     animateReviewMove();
 
@@ -587,6 +610,7 @@ function redrawGoldArrowsOnly() {
 
 function handleSquareClick(squareId) {
     if (reviewMode) return; // Deshabilitar jugadas en modo repaso
+    if (lichessGameActive && selectedMoveIndex !== -1) return; // Deshabilitar jugadas si se está en vista previa de jugada anterior
     if (game.game_over()) return;
 
     // Restricción si partida activa de Lichess
@@ -635,14 +659,15 @@ function handleSquareClick(squareId) {
     renderBoard();
 }
 
-function updateStatus() {
+function updateStatus(customGame) {
+    const activeGame = customGame || game;
     const statusEl = document.getElementById('status');
     const turnIndEl = document.getElementById('turn-indicator');
     
     let statusText = '';
-    let moveColor = game.turn() === 'w' ? 'Blancas' : 'Negras';
+    let moveColor = activeGame.turn() === 'w' ? 'Blancas' : 'Negras';
 
-    if (game.turn() === 'w') {
+    if (activeGame.turn() === 'w') {
         turnIndEl.innerText = 'Juegan Blancas';
         turnIndEl.className = 'px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-900 shadow';
     } else {
@@ -650,13 +675,13 @@ function updateStatus() {
         turnIndEl.className = 'px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-900 text-gray-100 shadow border border-gray-700';
     }
 
-    if (game.in_checkmate()) {
-        statusText = `<span class="text-red-500 font-bold"><i class="fas fa-skull"></i> ¡Jaque Mate! Ganan las ${game.turn() === 'w' ? 'Negras' : 'Blancas'}.</span>`;
-    } else if (game.in_draw()) {
+    if (activeGame.in_checkmate()) {
+        statusText = `<span class="text-red-500 font-bold"><i class="fas fa-skull"></i> ¡Jaque Mate! Ganan las ${activeGame.turn() === 'w' ? 'Negras' : 'Blancas'}.</span>`;
+    } else if (activeGame.in_draw()) {
         statusText = '<span class="text-yellow-500 font-bold"><i class="fas fa-handshake"></i> Partida finalizada en empate (Tablas).</span>';
     } else {
         statusText = `Es el turno de analizar a las <strong>${moveColor}</strong>.`;
-        if (game.in_check()) {
+        if (activeGame.in_check()) {
             statusText += ' <span class="text-red-400 font-bold ml-1"><i class="fas fa-exclamation-triangle"></i> ¡Jaque!</span>';
         }
     }
@@ -796,13 +821,18 @@ function updateMoveHistory() {
 function selectMoveForAnalysis(index) {
     if (!lichessGameActive || reviewMode) return;
     const moves = game.history();
-    if (index < 0 || index >= moves.length) return;
 
-    // Toggle off if clicking the already-selected move (go back to last)
-    if (selectedMoveIndex === index) {
+    if (index === -1) {
         selectedMoveIndex = -1;
     } else {
-        selectedMoveIndex = index;
+        if (index < 0 || index >= moves.length) return;
+
+        // Toggle off if clicking the already-selected move (go back to last)
+        if (selectedMoveIndex === index) {
+            selectedMoveIndex = -1;
+        } else {
+            selectedMoveIndex = index;
+        }
     }
 
     // Reset the 'closed' state for AI panel so it reacts to the new selection

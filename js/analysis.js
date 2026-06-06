@@ -1,6 +1,7 @@
 function shouldShowAnalysis() {
     if (!analysisEnabled) return false;
     if (lichessGameActive) {
+        if (selectedMoveIndex !== -1) return true;
         return game.turn() === userColor;
     }
     if (reviewMode) {
