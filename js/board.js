@@ -169,6 +169,7 @@ function renderBoard() {
     updateStatus();
     updateMoveHistory();
     animateBotMove();
+    animateReviewMove();
 
     // Actualizar la respuesta o estado del panel de Gemini
     if (typeof updateGeminiResponseForCurrentMove === 'function') {
@@ -645,6 +646,40 @@ function animateBotMove() {
     }
 }
 
+// Animar el movimiento en modo repaso (igual que animateBotMove)
+function animateReviewMove() {
+    if (typeof reviewTransition !== 'undefined' && reviewTransition) {
+        const fromSquareEl = document.querySelector(`[data-square="${reviewTransition.from}"]`);
+        const toSquareEl = document.querySelector(`[data-square="${reviewTransition.to}"]`);
+        if (fromSquareEl && toSquareEl) {
+            const pieceEl = toSquareEl.querySelector('.piece');
+            if (pieceEl) {
+                const fromRect = fromSquareEl.getBoundingClientRect();
+                const toRect = toSquareEl.getBoundingClientRect();
+                const deltaX = fromRect.left - toRect.left;
+                const deltaY = fromRect.top - toRect.top;
+
+                pieceEl.style.transition = 'none';
+                pieceEl.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                pieceEl.style.zIndex = '50';
+
+                // Forzar reflujo
+                pieceEl.offsetHeight;
+
+                pieceEl.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
+                pieceEl.style.transform = 'translate(0, 0)';
+
+                setTimeout(() => {
+                    pieceEl.style.transition = '';
+                    pieceEl.style.transform = '';
+                    pieceEl.style.zIndex = '';
+                }, 400);
+            }
+        }
+        reviewTransition = null;
+    }
+}
+
 // Iniciar el tablero al cargar la página
 window.onload = function() {
     // Cargar token previamente guardado
@@ -804,21 +839,58 @@ function startReviewGame(id) {
 }
 
 // Cambiar el índice de movimiento en el repaso
-function setReviewMoveIndex(index) {
+function setReviewMoveIndex(index, animate = false) {
     if (!reviewMode) return;
-    
+
+    const prevIndex = reviewIndex;
     reviewIndex = index;
-    game.reset();
-    for (let i = 0; i <= reviewIndex; i++) {
-        game.move(reviewMoves[i]);
+
+    // Si se va un paso adelante o atrás, capturamos el movimiento para animarlo
+    if (animate) {
+        const isForward = index === prevIndex + 1;
+        const isBackward = index === prevIndex - 1;
+
+        if (isForward && reviewMoves[index]) {
+            // Avanzamos: reproducimos la jugada nueva
+            game.reset();
+            for (let i = 0; i < index; i++) game.move(reviewMoves[i]);
+            const moveResult = game.move(reviewMoves[index]);
+            if (moveResult) {
+                reviewTransition = { from: moveResult.from, to: moveResult.to };
+            }
+        } else if (isBackward) {
+            // Retrocedemos: la pieza viaja de 'to' → 'from' (movimiento inverso)
+            const lastMove = reviewMoves[prevIndex];
+            game.reset();
+            for (let i = 0; i <= prevIndex; i++) game.move(reviewMoves[i]);
+            // Obtenemos from/to del movimiento que acabamos de deshacer
+            const hist = game.history({ verbose: true });
+            const undoneMove = hist[prevIndex];
+            if (undoneMove) {
+                reviewTransition = { from: undoneMove.to, to: undoneMove.from };
+            }
+            game.reset();
+            if (index >= 0) {
+                for (let i = 0; i <= index; i++) game.move(reviewMoves[i]);
+            }
+        } else {
+            // Salto directo sin animación
+            game.reset();
+            for (let i = 0; i <= index; i++) game.move(reviewMoves[i]);
+        }
+    } else {
+        game.reset();
+        if (index >= 0) {
+            for (let i = 0; i <= index; i++) game.move(reviewMoves[i]);
+        }
     }
-    
+
     // Actualizar progreso
     const progressEl = document.getElementById('review-progress');
     if (progressEl) {
         progressEl.innerText = `${reviewIndex + 1} / ${reviewMoves.length}`;
     }
-    
+
     selectedSquare = null;
     renderBoard();
 }
@@ -826,8 +898,11 @@ function setReviewMoveIndex(index) {
 // Retroceder un movimiento
 function prevReviewMove() {
     if (!reviewMode) return;
-    if (reviewIndex >= 0) {
-        setReviewMoveIndex(reviewIndex - 1);
+    if (reviewIndex > 0) {
+        setReviewMoveIndex(reviewIndex - 1, true);
+    } else if (reviewIndex === 0) {
+        // Volver a posición inicial (antes de cualquier jugada)
+        setReviewMoveIndex(-1, false);
     }
 }
 
@@ -835,7 +910,7 @@ function prevReviewMove() {
 function nextReviewMove() {
     if (!reviewMode) return;
     if (reviewIndex < reviewMoves.length - 1) {
-        setReviewMoveIndex(reviewIndex + 1);
+        setReviewMoveIndex(reviewIndex + 1, true);
     }
 }
 

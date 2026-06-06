@@ -9,6 +9,7 @@ let lichessGameActive = false;
 let lichessGameId = null;
 let userColor = 'w'; // 'w' o 'b'
 let botTransition = null;
+let reviewTransition = null; // Para animar movimientos en modo repaso
 
 let analysisEnabled = false;
 let currentGoldSuggestion = null;
