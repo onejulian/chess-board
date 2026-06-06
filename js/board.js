@@ -254,6 +254,23 @@ function renderBoard() {
     boardEl.innerHTML = '';
     const board = game.board(); // Matriz 8x8 del estado actual
     
+    // Determinar el movimiento a resaltar (origen y destino)
+    let highlightMove = null;
+    const historyVerbose = game.history({ verbose: true });
+    if (reviewMode) {
+        if (historyVerbose.length > 0) {
+            highlightMove = historyVerbose[historyVerbose.length - 1];
+        }
+    } else if (lichessGameActive && selectedMoveIndex !== -1) {
+        if (selectedMoveIndex >= 0 && selectedMoveIndex < historyVerbose.length) {
+            highlightMove = historyVerbose[selectedMoveIndex];
+        }
+    } else {
+        if (historyVerbose.length > 0) {
+            highlightMove = historyVerbose[historyVerbose.length - 1];
+        }
+    }
+    
     // Obtener TODAS las jugadas legales del turno actual
     const moves = game.moves({ verbose: true });
     
@@ -307,6 +324,15 @@ function renderBoard() {
 
             if (selectedSquare === squareId) {
                 squareEl.classList.add('selected');
+            }
+
+            // Resaltar origen y destino de la última jugada o de la seleccionada
+            if (highlightMove && (squareId === highlightMove.from || squareId === highlightMove.to)) {
+                if (lichessGameActive && !reviewMode && selectedMoveIndex !== -1) {
+                    squareEl.classList.add('selected-move-highlight');
+                } else {
+                    squareEl.classList.add('last-move-highlight');
+                }
             }
 
             if (!selectedSquare) {
@@ -786,6 +812,7 @@ function selectMoveForAnalysis(index) {
     if (typeof updateGeminiResponseForCurrentMove === 'function') {
         updateGeminiResponseForCurrentMove();
     }
+    renderBoard();
 }
 
 function undoMove() {

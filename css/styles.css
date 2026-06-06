@@ -56,6 +56,18 @@ body {
     transform: scale(1.05);
 }
 
+/* Casillas origen y destino del último movimiento */
+.last-move-highlight {
+    background-color: rgba(59, 130, 246, 0.3) !important; /* Soft premium blue */
+    box-shadow: inset 0 0 0 2.5px rgba(59, 130, 246, 0.45);
+}
+
+/* Casillas origen y destino del movimiento seleccionado para análisis */
+.selected-move-highlight {
+    background-color: rgba(168, 85, 247, 0.3) !important; /* Soft premium purple */
+    box-shadow: inset 0 0 0 2.5px rgba(168, 85, 247, 0.45);
+}
+
 .selected {
     background-color: rgba(255, 255, 51, 0.6) !important;
 }
