@@ -204,22 +204,74 @@ function renderBoard() {
     }
 }
 
+// ─── Arrow rendering helpers ────────────────────────────────────────────────
+
+/**
+ * Build an SVG path string for a chess-style filled arrow.
+ * The arrow has a rectangular shaft and a bold triangular arrowhead.
+ * All coordinates are in SVG board-space (0–8 units, 1 unit = 1 square).
+ *
+ * @param {number} x1  shaft start X
+ * @param {number} y1  shaft start Y
+ * @param {number} x2  arrowhead tip X
+ * @param {number} y2  arrowhead tip Y
+ * @param {number} shaftW   half-width of the shaft  (board units)
+ * @param {number} headW    half-width of arrowhead base (board units)
+ * @param {number} headLen  length of arrowhead        (board units)
+ */
+function buildArrowPath(x1, y1, x2, y2, shaftW, headW, headLen) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 0.001) return '';
+
+    // Unit vector along the arrow
+    const ux = dx / len;
+    const uy = dy / len;
+    // Perpendicular unit vector
+    const px = -uy;
+    const py = ux;
+
+    // Arrowhead base sits headLen before the tip
+    const bx = x2 - ux * headLen;
+    const by = y2 - uy * headLen;
+
+    // Eight polygon points (shaft rectangle + arrowhead triangle)
+    const pts = [
+        // Shaft left start
+        [x1 + px * shaftW,  y1 + py * shaftW],
+        // Shaft right start
+        [x1 - px * shaftW,  y1 - py * shaftW],
+        // Shaft right end (at head base)
+        [bx  - px * shaftW, by  - py * shaftW],
+        // Arrowhead right wing
+        [bx  - px * headW,  by  - py * headW],
+        // Arrowhead tip
+        [x2,                y2              ],
+        // Arrowhead left wing
+        [bx  + px * headW,  by  + py * headW],
+        // Shaft left end (at head base)
+        [bx  + px * shaftW, by  + py * shaftW],
+    ];
+
+    return 'M ' + pts.map(p => p[0].toFixed(4) + ',' + p[1].toFixed(4)).join(' L ') + ' Z';
+}
+
 function drawArrows(moves) {
     const svgEl = document.getElementById('arrows-svg');
     const defsEl = document.getElementById('arrow-defs');
-    
+
+    // Clear only non-golden arrows
     defsEl.innerHTML = '';
-    const lines = svgEl.querySelectorAll('line');
-    lines.forEach(l => {
-        if (!l.classList.contains('golden-arrow')) l.remove();
-    });
+    svgEl.querySelectorAll('.move-arrow').forEach(el => el.remove());
 
     const palette = [
-        '#f59e0b', '#3b82f6', '#10b981', '#ec4899', 
-        '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', 
+        '#3b82f6', '#10b981', '#f59e0b', '#ec4899',
+        '#8b5cf6', '#06b6d4', '#84cc16', '#f97316',
         '#14b8a6', '#d946ef', '#ef4444', '#eab308'
     ];
 
+    // Group moves by origin square; filter if a piece is selected
     const movesByOrigin = {};
     moves.forEach(m => {
         if (selectedSquare && m.from !== selectedSquare) return;
@@ -227,140 +279,116 @@ function drawArrows(moves) {
         movesByOrigin[m.from].push(m);
     });
 
-    const processedMoves = [];
+    const arrowData = [];
+    const originKeys = Object.keys(movesByOrigin);
 
-    Object.keys(movesByOrigin).forEach(origin => {
-        const originMoves = movesByOrigin[origin];
-        originMoves.forEach((m, index) => {
+    originKeys.forEach((origin, originIndex) => {
+        // Each origin square gets one color from the palette
+        const color = palette[originIndex % palette.length];
+
+        movesByOrigin[origin].forEach(m => {
             const fromCoords = getCoords(m.from);
-            const toCoords = getCoords(m.to);
-            
+            const toCoords   = getCoords(m.to);
+
             const dx = toCoords.x - fromCoords.x;
             const dy = toCoords.y - fromCoords.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            
             if (distance === 0) return;
-            
-            const color = palette[index % palette.length];
-            const markerId = 'arrowhead-' + color.replace('#', '');
 
-            if (!document.getElementById(markerId)) {
-                const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-                marker.setAttribute('id', markerId);
-                marker.setAttribute('viewBox', '0 0 10 10');
-                marker.setAttribute('refX', '7');
-                marker.setAttribute('refY', '5');
-                marker.setAttribute('markerWidth', '4');
-                marker.setAttribute('markerHeight', '4');
-                marker.setAttribute('orient', 'auto');
-                
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.setAttribute('d', 'M 0 2 L 10 5 L 0 8 z');
-                path.setAttribute('fill', color);
-                marker.appendChild(path);
-                defsEl.appendChild(marker);
-            }
-            
-            const startOffset = 0.15; 
-            const endOffset = 0.45;
-            const ratioStart = startOffset / distance;
-            const ratioEnd = 1 - (endOffset / distance);
-            
-            processedMoves.push({
-                x1: (fromCoords.x + 0.5) + dx * ratioStart,
-                y1: (fromCoords.y + 0.5) + dy * ratioStart,
-                x2: (fromCoords.x + 0.5) + dx * ratioEnd,
-                y2: (fromCoords.y + 0.5) + dy * ratioEnd,
-                distance: distance,
-                color: color,
-                markerId: markerId
-            });
+            // Shaft starts 0.38 units from piece center, tip lands 0.1 before square center
+            const startOffset = 0.38;
+            const tipOffset   = 0.1;
+
+            const fromCx = fromCoords.x + 0.5;
+            const fromCy = fromCoords.y + 0.5;
+            const toCx   = toCoords.x   + 0.5;
+            const toCy   = toCoords.y   + 0.5;
+
+            const x1 = fromCx + (dx / distance) * startOffset;
+            const y1 = fromCy + (dy / distance) * startOffset;
+            const x2 = toCx   - (dx / distance) * tipOffset;
+            const y2 = toCy   - (dy / distance) * tipOffset;
+
+            arrowData.push({ x1, y1, x2, y2, distance, color });
         });
     });
 
-    processedMoves.sort((a, b) => b.distance - a.distance);
+    // Draw longest arrows first so shorter ones render on top
+    arrowData.sort((a, b) => b.distance - a.distance);
 
-    processedMoves.forEach(pm => {
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', pm.x1);
-        line.setAttribute('y1', pm.y1);
-        line.setAttribute('x2', pm.x2);
-        line.setAttribute('y2', pm.y2);
-        line.setAttribute('stroke', pm.color);
-        line.setAttribute('stroke-width', '0.12');
-        line.setAttribute('stroke-linecap', 'round');
-        line.setAttribute('marker-end', `url(#${pm.markerId})`);
-        line.setAttribute('opacity', '0.85');
-        
-        svgEl.appendChild(line);
+    // Arrow dimensions (in board units)
+    const shaftW  = 0.09;
+    const headW   = 0.21;
+    const headLen = 0.30;
+
+    arrowData.forEach(ad => {
+        const d = buildArrowPath(ad.x1, ad.y1, ad.x2, ad.y2, shaftW, headW, headLen);
+        if (!d) return;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', d);
+        path.setAttribute('fill', ad.color);
+        path.setAttribute('opacity', '0.82');
+        path.classList.add('move-arrow');
+        // Subtle drop-shadow glow
+        path.style.filter = `drop-shadow(0 0 2px ${ad.color}88)`;
+
+        svgEl.appendChild(path);
     });
 }
 
 // Dibuja las flechas doradas intermitentes sobre el SVG existente
 function drawGoldArrows(bestMoves) {
     const svgEl = document.getElementById('arrows-svg');
-    const defsEl = document.getElementById('arrow-defs');
-    
-    if (!document.getElementById('arrowhead-gold')) {
-        const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-        marker.setAttribute('id', 'arrowhead-gold');
-        marker.setAttribute('viewBox', '0 0 10 10');
-        marker.setAttribute('refX', '7');
-        marker.setAttribute('refY', '5');
-        marker.setAttribute('markerWidth', '4.5');
-        marker.setAttribute('markerHeight', '4.5');
-        marker.setAttribute('orient', 'auto');
-        
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', 'M 0 2 L 10 5 L 0 8 z');
-        path.setAttribute('fill', '#fbbf24');
-        marker.appendChild(path);
-        defsEl.appendChild(marker);
-    }
+    const goldColor = '#fbbf24';
+
+    // Gold arrow dimensions — slightly bigger than regular arrows
+    const shaftW  = 0.105;
+    const headW   = 0.235;
+    const headLen = 0.32;
 
     bestMoves.forEach(moveStr => {
         if (moveStr.length < 4) return;
         const fromSquare = moveStr.substring(0, 2);
-        const toSquare = moveStr.substring(2, 4);
+        const toSquare   = moveStr.substring(2, 4);
 
         const fromCoords = getCoords(fromSquare);
-        const toCoords = getCoords(toSquare);
-        
+        const toCoords   = getCoords(toSquare);
+
         const dx = toCoords.x - fromCoords.x;
         const dy = toCoords.y - fromCoords.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        
         if (distance === 0) return;
-        
-        const startOffset = 0.15; 
-        const endOffset = 0.45;
-        const ratioStart = startOffset / distance;
-        const ratioEnd = 1 - (endOffset / distance);
 
-        const x1 = (fromCoords.x + 0.5) + dx * ratioStart;
-        const y1 = (fromCoords.y + 0.5) + dy * ratioStart;
-        const x2 = (fromCoords.x + 0.5) + dx * ratioEnd;
-        const y2 = (fromCoords.y + 0.5) + dy * ratioEnd;
+        const startOffset = 0.38;
+        const tipOffset   = 0.10;
 
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', x1);
-        line.setAttribute('y1', y1);
-        line.setAttribute('x2', x2);
-        line.setAttribute('y2', y2);
-        line.setAttribute('stroke', '#fbbf24');
-        line.setAttribute('stroke-linecap', 'round');
-        line.setAttribute('marker-end', 'url(#arrowhead-gold)');
-        line.classList.add('golden-arrow');
-        
-        svgEl.appendChild(line);
+        const fromCx = fromCoords.x + 0.5;
+        const fromCy = fromCoords.y + 0.5;
+        const toCx   = toCoords.x   + 0.5;
+        const toCy   = toCoords.y   + 0.5;
+
+        const x1 = fromCx + (dx / distance) * startOffset;
+        const y1 = fromCy + (dy / distance) * startOffset;
+        const x2 = toCx   - (dx / distance) * tipOffset;
+        const y2 = toCy   - (dy / distance) * tipOffset;
+
+        const d = buildArrowPath(x1, y1, x2, y2, shaftW, headW, headLen);
+        if (!d) return;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', d);
+        path.setAttribute('fill', goldColor);
+        path.classList.add('golden-arrow');
+
+        svgEl.appendChild(path);
     });
 }
 
 // Limpia y redibuja únicamente las flechas doradas en tiempo real
 function redrawGoldArrowsOnly() {
     const svgEl = document.getElementById('arrows-svg');
-    const goldLines = svgEl.querySelectorAll('.golden-arrow');
-    goldLines.forEach(l => l.remove());
+    svgEl.querySelectorAll('.golden-arrow').forEach(el => el.remove());
 
     if (shouldShowAnalysis() && currentGoldSuggestion) {
         drawGoldArrows(currentGoldSuggestion);
